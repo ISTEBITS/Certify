@@ -35,13 +35,13 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await request.json()
-    const { name, description, date, location, organizationCode } = body
+    const { name, description, date, location, organizationCode, customSlug } = body
 
     if (!name || !date || !organizationCode) {
       return NextResponse.json(
@@ -52,10 +52,41 @@ export async function POST(request: NextRequest) {
 
     await connectDB()
 
+    // Validate custom slug if provided
+    let slug = generateEventSlug(name)
+    if (customSlug) {
+      const slugTrimmed = customSlug.trim().toUpperCase()
+      
+      if (slugTrimmed.length < 2 || slugTrimmed.length > 6) {
+        return NextResponse.json(
+          { error: 'Custom slug must be between 2 and 6 characters' },
+          { status: 400 }
+        )
+      }
+      
+      if (!/^[A-Z0-9]+$/.test(slugTrimmed)) {
+        return NextResponse.json(
+          { error: 'Custom slug must contain only alphanumeric characters' },
+          { status: 400 }
+        )
+      }
+      
+      // Check if slug already exists
+      const existingSlugEvent = await Event.findOne({ slug: slugTrimmed })
+      if (existingSlugEvent) {
+        return NextResponse.json(
+          { error: 'This slug is already in use' },
+          { status: 400 }
+        )
+      }
+      
+      slug = slugTrimmed
+    }
+
     // Generate unique event code
     let code = generateEventCode()
     let existingEvent = await Event.findOne({ code })
-    
+
     // Ensure unique code
     while (existingEvent) {
       code = generateEventCode()
@@ -65,7 +96,7 @@ export async function POST(request: NextRequest) {
     const event = await Event.create({
       name,
       description,
-      slug: generateEventSlug(name),
+      slug,
       code,
       date: new Date(date),
       location,

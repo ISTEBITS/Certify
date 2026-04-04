@@ -173,3 +173,5 @@ firestore-debug.log
 
 # Stripe
 stripe_*
+
+scripts/

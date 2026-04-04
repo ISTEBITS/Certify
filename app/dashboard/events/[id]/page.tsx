@@ -62,6 +62,7 @@ export default function EventDetailPage() {
     date: '',
     location: '',
     organizationCode: '',
+    customSlug: '',
   })
 
   useEffect(() => {
@@ -84,6 +85,7 @@ export default function EventDetailPage() {
         date: data.date ? new Date(data.date).toISOString().split('T')[0] : '',
         location: data.location || '',
         organizationCode: data.organizationCode,
+        customSlug: data.slug || '',
       })
     } catch (err: any) {
       setError(err.message)
@@ -121,10 +123,21 @@ export default function EventDetailPage() {
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    })
+    const { name, value } = e.target
+    
+    // Auto-format slug to uppercase and remove non-alphanumeric characters
+    if (name === 'customSlug') {
+      const formatted = value.toUpperCase().replace(/[^A-Z0-9]/g, '')
+      setFormData({
+        ...formData,
+        [name]: formatted,
+      })
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      })
+    }
   }
 
   if (loading) {
@@ -209,7 +222,7 @@ export default function EventDetailPage() {
       )}
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
             <div className="bg-blue-100 p-2 rounded-lg">
@@ -250,6 +263,17 @@ export default function EventDetailPage() {
                   ? 'Designed'
                   : 'Not Designed'}
               </p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="bg-orange-100 p-2 rounded-lg">
+              <FileText className="h-5 w-5 text-orange-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Event Slug</p>
+              <p className="font-mono font-medium">{event.slug}</p>
             </div>
           </CardContent>
         </Card>
@@ -355,6 +379,36 @@ export default function EventDetailPage() {
                   <p className="text-sm text-gray-500">
                     This code will be used in certificate IDs (e.g., ACME-EVENT-2025-000001-A1B2)
                   </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="customSlug">
+                    Custom Slug <span className="text-xs text-gray-500 font-normal">(optional)</span>
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="customSlug"
+                      name="customSlug"
+                      placeholder="e.g., TECH25 (2-6 characters)"
+                      value={formData.customSlug}
+                      onChange={handleChange}
+                      className="uppercase"
+                      maxLength={6}
+                    />
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Custom identifier for this event (2-6 alphanumeric characters). Leave empty to keep current slug.
+                  </p>
+                  {formData.customSlug && formData.customSlug.length > 0 && formData.customSlug.length < 2 && (
+                    <p className="text-sm text-amber-600">
+                      ⚠️ Slug must be at least 2 characters
+                    </p>
+                  )}
+                  {formData.customSlug && formData.customSlug.length >= 2 && formData.customSlug.length <= 6 && (
+                    <p className="text-sm text-green-600">
+                      ✓ Valid slug
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex gap-4 pt-4">

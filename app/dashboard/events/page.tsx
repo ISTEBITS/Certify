@@ -34,6 +34,7 @@ interface Event {
   name: string
   description?: string
   code: string
+  slug: string
   date: string
   location?: string
   organizationCode: string
@@ -62,6 +63,7 @@ export default function EventsPage() {
           (event) =>
             event.name.toLowerCase().includes(query) ||
             event.code.toLowerCase().includes(query) ||
+            event.slug.toLowerCase().includes(query) ||
             event.organizationCode.toLowerCase().includes(query)
         )
       )
@@ -147,6 +149,9 @@ export default function EventsPage() {
                     <CardTitle className="text-lg truncate">{event.name}</CardTitle>
                     <CardDescription className="mt-1">
                       Code: <span className="font-mono">{event.code}</span>
+                    </CardDescription>
+                    <CardDescription className="mt-0.5">
+                      Slug: <span className="font-mono">{event.slug}</span>
                     </CardDescription>
                   </div>
                   <div className="bg-primary/10 p-2 rounded-lg flex-shrink-0">

@@ -50,6 +50,14 @@ const EventSchema = new Schema<IEvent>(
       type: String,
       required: true,
       trim: true,
+      minlength: [2, 'Slug must be at least 2 characters'],
+      maxlength: [6, 'Slug cannot exceed 6 characters'],
+      validate: {
+        validator: function(v: string) {
+          return /^[a-zA-Z0-9]+$/.test(v);
+        },
+        message: 'Slug must contain only alphanumeric characters'
+      }
     },
     code: {
       type: String,

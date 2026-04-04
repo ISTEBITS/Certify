@@ -20,6 +20,7 @@ export default function NewEventPage() {
     date: '',
     location: '',
     organizationCode: '',
+    customSlug: '',
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,10 +49,21 @@ export default function NewEventPage() {
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    })
+    const { name, value } = e.target
+    
+    // Auto-format slug to uppercase and remove non-alphanumeric characters
+    if (name === 'customSlug') {
+      const formatted = value.toUpperCase().replace(/[^A-Z0-9]/g, '')
+      setFormData({
+        ...formData,
+        [name]: formatted,
+      })
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      })
+    }
   }
 
   return (
@@ -168,6 +180,36 @@ export default function NewEventPage() {
               <p className="text-sm text-gray-500">
                 This code will be used in certificate IDs (e.g., ACME-EVENT-2025-000001-A1B2)
               </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="customSlug">
+                Custom Slug <span className="text-xs text-gray-500 font-normal">(optional)</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  id="customSlug"
+                  name="customSlug"
+                  placeholder="e.g., TECH25 (2-6 characters)"
+                  value={formData.customSlug}
+                  onChange={handleChange}
+                  className="uppercase"
+                  maxLength={6}
+                />
+              </div>
+              <p className="text-sm text-gray-500">
+                Custom identifier for this event (2-6 alphanumeric characters). Auto-generated from event name if not provided.
+              </p>
+              {formData.customSlug && formData.customSlug.length > 0 && formData.customSlug.length < 2 && (
+                <p className="text-sm text-amber-600">
+                  ⚠️ Slug must be at least 2 characters
+                </p>
+              )}
+              {formData.customSlug && formData.customSlug.length >= 2 && formData.customSlug.length <= 6 && (
+                <p className="text-sm text-green-600">
+                  ✓ Valid slug
+                </p>
+              )}
             </div>
 
             <div className="flex gap-4 pt-4">

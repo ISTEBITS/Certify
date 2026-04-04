@@ -94,7 +94,7 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { name, description, date, location, organizationCode, templateConfig } = body
+    const { name, description, date, location, organizationCode, templateConfig, customSlug } = body
 
     await connectDB()
 
@@ -105,6 +105,36 @@ export async function PUT(
     if (location !== undefined) updateData.location = location
     if (organizationCode) updateData.organizationCode = organizationCode.toUpperCase()
     if (templateConfig) updateData.templateConfig = templateConfig
+    
+    // Handle custom slug update
+    if (customSlug !== undefined) {
+      const slugTrimmed = customSlug.trim().toUpperCase()
+      
+      if (slugTrimmed.length < 2 || slugTrimmed.length > 6) {
+        return NextResponse.json(
+          { error: 'Custom slug must be between 2 and 6 characters' },
+          { status: 400 }
+        )
+      }
+      
+      if (!/^[A-Z0-9]+$/.test(slugTrimmed)) {
+        return NextResponse.json(
+          { error: 'Custom slug must contain only alphanumeric characters' },
+          { status: 400 }
+        )
+      }
+      
+      // Check if slug already exists (excluding current event)
+      const existingSlugEvent = await Event.findOne({ slug: slugTrimmed, _id: { $ne: id } })
+      if (existingSlugEvent) {
+        return NextResponse.json(
+          { error: 'This slug is already in use' },
+          { status: 400 }
+        )
+      }
+      
+      updateData.slug = slugTrimmed
+    }
 
     const event = await Event.findByIdAndUpdate(
       id,
