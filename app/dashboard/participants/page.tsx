@@ -33,6 +33,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs'
 import {
   Users,
   Plus,
@@ -45,6 +53,11 @@ import {
   CheckCircle,
   FileText,
   Download,
+  GraduationCap,
+  Trophy,
+  Building2,
+  Hash,
+  Eye,
 } from 'lucide-react'
 import Papa from 'papaparse'
 
@@ -52,12 +65,16 @@ interface Event {
   _id: string
   name: string
   organizationCode: string
+  participationTemplate?: any
+  achievementTemplate?: any
 }
 
 interface Participant {
   _id: string
   name: string
   email: string
+  collegeName?: string
+  registrationNumber?: string
   eventId: Event
   certificateId?: string
   certificateIssued: boolean
@@ -80,10 +97,19 @@ export default function ParticipantsPage() {
     name: '',
     email: '',
     eventId: '',
+    collegeName: '',
+    registrationNumber: '',
   })
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [csvPreview, setCsvPreview] = useState<any[]>([])
   const [uploading, setUploading] = useState(false)
+
+  // Issue certificate dialog state
+  const [issueDialogOpen, setIssueDialogOpen] = useState(false)
+  const [issueParticipant, setIssueParticipant] = useState<Participant | null>(null)
+  const [certificateType, setCertificateType] = useState<'participation' | 'achievement'>('participation')
+  const [position, setPosition] = useState('')
+  const [issuing, setIssuing] = useState(false)
 
   useEffect(() => {
     fetchEvents()
@@ -102,7 +128,9 @@ export default function ParticipantsPage() {
       filtered = filtered.filter(
         (p) =>
           p.name.toLowerCase().includes(query) ||
-          p.email.toLowerCase().includes(query)
+          p.email.toLowerCase().includes(query) ||
+          (p.collegeName || '').toLowerCase().includes(query) ||
+          (p.registrationNumber || '').toLowerCase().includes(query)
       )
     }
 
@@ -146,8 +174,11 @@ export default function ParticipantsPage() {
 
       if (response.ok) {
         setShowAddDialog(false)
-        setNewParticipant({ name: '', email: '', eventId: '' })
+        setNewParticipant({ name: '', email: '', eventId: '', collegeName: '', registrationNumber: '' })
         fetchParticipants()
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to add participant')
       }
     } catch (error) {
       console.error('Error adding participant:', error)
@@ -191,7 +222,7 @@ export default function ParticipantsPage() {
             setShowCSVDialog(false)
             setCsvFile(null)
             setCsvPreview([])
-            setNewParticipant({ name: '', email: '', eventId: '' })
+            setNewParticipant({ name: '', email: '', eventId: '', collegeName: '', registrationNumber: '' })
             fetchParticipants()
           }
         } catch (error) {
@@ -203,20 +234,42 @@ export default function ParticipantsPage() {
     })
   }
 
-  const issueCertificate = async (id: string) => {
-    setIssuingId(id)
+  const openIssueDialog = (participant: Participant) => {
+    setIssueParticipant(participant)
+    setCertificateType('participation')
+    setPosition('')
+    setIssueDialogOpen(true)
+  }
+
+  const issueCertificate = async () => {
+    if (!issueParticipant) return
+
+    setIssuing(true)
     try {
-      const response = await fetch(`/api/participants/${id}`, {
+      const body: any = { certificateType }
+      if (certificateType === 'achievement' && position.trim()) {
+        body.position = position.trim()
+      }
+
+      const response = await fetch(`/api/participants/${issueParticipant._id}`, {
         method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       })
 
       if (response.ok) {
+        setIssueDialogOpen(false)
+        setIssueParticipant(null)
         fetchParticipants()
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to issue certificate')
       }
     } catch (error) {
       console.error('Error issuing certificate:', error)
+      alert('Failed to issue certificate')
     } finally {
-      setIssuingId(null)
+      setIssuing(false)
     }
   }
 
@@ -237,7 +290,7 @@ export default function ParticipantsPage() {
   }
 
   const downloadSampleCSV = () => {
-    const csv = 'name,email\nJohn Doe,john@example.com\nJane Smith,jane@example.com'
+    const csv = 'name,email,collegeName,registrationNumber\nJohn Doe,john@example.com,University of Technology,REG-2025-001\nJane Smith,jane@example.com,State College,REG-2025-002'
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -256,7 +309,7 @@ export default function ParticipantsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -277,7 +330,7 @@ export default function ParticipantsPage() {
               <DialogHeader>
                 <DialogTitle>Import Participants from CSV</DialogTitle>
                 <DialogDescription>
-                  Upload a CSV file with name and email columns
+                  Upload a CSV file with name, email, and optional collegeName, registrationNumber columns
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
@@ -316,15 +369,19 @@ export default function ParticipantsPage() {
                       <table className="w-full text-sm">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-4 py-2 text-left">Name</th>
-                            <th className="px-4 py-2 text-left">Email</th>
+                            <th className="px-3 py-2 text-left">Name</th>
+                            <th className="px-3 py-2 text-left">Email</th>
+                            <th className="px-3 py-2 text-left">College</th>
+                            <th className="px-3 py-2 text-left">Reg. No.</th>
                           </tr>
                         </thead>
                         <tbody>
                           {csvPreview.map((row, i) => (
                             <tr key={i} className="border-t">
-                              <td className="px-4 py-2">{row.name}</td>
-                              <td className="px-4 py-2">{row.email}</td>
+                              <td className="px-3 py-2">{row.name}</td>
+                              <td className="px-3 py-2">{row.email}</td>
+                              <td className="px-3 py-2">{row.collegeName || '-'}</td>
+                              <td className="px-3 py-2">{row.registrationNumber || '-'}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -368,16 +425,16 @@ export default function ParticipantsPage() {
                 Add Participant
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle>Add New Participant</DialogTitle>
                 <DialogDescription>
-                  Enter the participant details below
+                  Enter the participant details below. College and Registration Number are optional.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="event">Event</Label>
+                  <Label htmlFor="event">Event *</Label>
                   <Select
                     value={newParticipant.eventId}
                     onValueChange={(value) =>
@@ -397,7 +454,7 @@ export default function ParticipantsPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
+                  <Label htmlFor="name">Name *</Label>
                   <Input
                     id="name"
                     value={newParticipant.name}
@@ -408,7 +465,7 @@ export default function ParticipantsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">Email *</Label>
                   <Input
                     id="email"
                     type="email"
@@ -417,6 +474,35 @@ export default function ParticipantsPage() {
                       setNewParticipant({ ...newParticipant, email: e.target.value })
                     }
                     placeholder="email@example.com"
+                  />
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label htmlFor="collegeName" className="flex items-center gap-2">
+                    <Building2 className="h-3.5 w-3.5" />
+                    College / Institution
+                  </Label>
+                  <Input
+                    id="collegeName"
+                    value={newParticipant.collegeName}
+                    onChange={(e) =>
+                      setNewParticipant({ ...newParticipant, collegeName: e.target.value })
+                    }
+                    placeholder="e.g., University of Technology"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="registrationNumber" className="flex items-center gap-2">
+                    <Hash className="h-3.5 w-3.5" />
+                    Registration Number
+                  </Label>
+                  <Input
+                    id="registrationNumber"
+                    value={newParticipant.registrationNumber}
+                    onChange={(e) =>
+                      setNewParticipant({ ...newParticipant, registrationNumber: e.target.value })
+                    }
+                    placeholder="e.g., REG-2025-001"
                   />
                 </div>
               </div>
@@ -441,7 +527,7 @@ export default function ParticipantsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Search participants..."
+            placeholder="Search by name, email, college, or reg. no..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -473,6 +559,9 @@ export default function ParticipantsPage() {
                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
                       Participant
                     </th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 hidden lg:table-cell">
+                      College / Reg. No.
+                    </th>
                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
                       Event
                     </th>
@@ -489,18 +578,38 @@ export default function ParticipantsPage() {
                     <tr key={participant._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="bg-primary/10 p-2 rounded-full">
+                          <div className="bg-primary/10 p-2 rounded-full flex-shrink-0">
                             <Users className="h-4 w-4 text-primary" />
                           </div>
-                          <div>
-                            <p className="font-medium text-gray-900">
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900 truncate">
                               {participant.name}
                             </p>
                             <p className="text-sm text-gray-500 flex items-center gap-1">
-                              <Mail className="h-3 w-3" />
-                              {participant.email}
+                              <Mail className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">{participant.email}</span>
                             </p>
                           </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 hidden lg:table-cell">
+                        <div className="text-sm">
+                          {participant.collegeName ? (
+                            <>
+                              <div className="flex items-center gap-1.5 text-gray-700">
+                                <Building2 className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
+                                <span className="truncate">{participant.collegeName}</span>
+                              </div>
+                              {participant.registrationNumber && (
+                                <div className="flex items-center gap-1.5 text-gray-500 mt-0.5">
+                                  <Hash className="h-3 w-3 flex-shrink-0" />
+                                  <span className="font-mono text-xs">{participant.registrationNumber}</span>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-gray-400 text-xs">Not provided</span>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -513,16 +622,16 @@ export default function ParticipantsPage() {
                       </td>
                       <td className="px-6 py-4">
                         {participant.certificateIssued ? (
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                            <div>
-                              <p className="text-xs text-green-600 font-medium">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                              <span className="text-xs text-green-600 font-medium">
                                 Issued
-                              </p>
-                              <p className="text-xs text-gray-400 font-mono">
-                                {participant.certificateId}
-                              </p>
+                              </span>
                             </div>
+                            <p className="text-[10px] text-gray-400 font-mono truncate max-w-[160px]">
+                              {participant.certificateId}
+                            </p>
                           </div>
                         ) : (
                           <span className="text-xs text-gray-400">Not issued</span>
@@ -530,12 +639,13 @@ export default function ParticipantsPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {!participant.certificateIssued && (
+                          {!participant.certificateIssued ? (
                             <Button
-                              variant="outline"
+                              variant="default"
                               size="sm"
-                              onClick={() => issueCertificate(participant._id)}
-                              disabled={issuingId === participant._id}
+                              onClick={() => openIssueDialog(participant)}
+                              disabled={issuingId === participant._id || (!participant.eventId.participationTemplate && !participant.eventId.achievementTemplate)}
+                              title={!participant.eventId.participationTemplate && !participant.eventId.achievementTemplate ? 'No templates designed yet' : 'Issue Certificate'}
                             >
                               {issuingId === participant._id ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -546,21 +656,20 @@ export default function ParticipantsPage() {
                                 </>
                               )}
                             </Button>
-                          )}
-                          {participant.certificateIssued && (
+                          ) : (
                             <Link
                               href={`/verify/${participant.certificateId}`}
                               target="_blank"
                             >
                               <Button variant="outline" size="sm">
-                                <FileText className="h-4 w-4 mr-1" />
+                                <Eye className="h-4 w-4 mr-1" />
                                 View
                               </Button>
                             </Link>
                           )}
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="text-red-600">
+                              <Button variant="ghost" size="icon" className="text-red-600 h-8 w-8">
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </AlertDialogTrigger>
@@ -568,8 +677,13 @@ export default function ParticipantsPage() {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Delete Participant</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Are you sure you want to delete {participant.name}? This action
+                                  Are you sure you want to delete <strong>{participant.name}</strong>? This action
                                   cannot be undone.
+                                  {participant.certificateIssued && (
+                                    <span className="block mt-2 text-red-600 font-medium">
+                                      ⚠ This will also delete the associated certificate.
+                                    </span>
+                                  )}
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -580,7 +694,7 @@ export default function ParticipantsPage() {
                                   disabled={deletingId === participant._id}
                                 >
                                   {deletingId === participant._id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                   ) : (
                                     'Delete'
                                   )}
@@ -618,6 +732,132 @@ export default function ParticipantsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Issue Certificate Dialog */}
+      <Dialog open={issueDialogOpen} onOpenChange={setIssueDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5 text-primary" />
+              Issue Certificate
+            </DialogTitle>
+            <DialogDescription>
+              Issue a certificate to <strong>{issueParticipant?.name}</strong>
+            </DialogDescription>
+          </DialogHeader>
+
+          {issueParticipant && !issueParticipant.eventId.participationTemplate && !issueParticipant.eventId.achievementTemplate && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+              <p className="font-medium">⚠ No certificate templates found</p>
+              <p className="mt-1 text-amber-700">
+                Please design certificate templates for &quot;{issueParticipant.eventId.name}&quot; in the{' '}
+                <Link href="/dashboard/designer" className="underline font-medium">
+                  Certificate Designer
+                </Link>{' '}
+                before issuing certificates. Both Participation and Achievement templates can be created.
+              </p>
+            </div>
+          )}
+
+          {issueParticipant?.eventId.participationTemplate && (
+            <Tabs value={certificateType} onValueChange={(v) => setCertificateType(v as 'participation' | 'achievement')}>
+              <TabsList className="w-full">
+                <TabsTrigger value="participation" className="flex-1">
+                  <GraduationCap className="h-4 w-4 mr-1.5" />
+                  Participation
+                </TabsTrigger>
+                <TabsTrigger value="achievement" className="flex-1">
+                  <Trophy className="h-4 w-4 mr-1.5" />
+                  Achievement
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="participation" className="mt-4 space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+                  <p className="font-medium">Participation Certificate</p>
+                  <p className="mt-1 text-blue-700">
+                    This certificate acknowledges that the participant has taken part in the event.
+                  </p>
+                </div>
+                <div className="space-y-2 p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm font-medium text-gray-700">Certificate will include:</p>
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    <li className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> {issueParticipant.name}</li>
+                    <li className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> {issueParticipant.email}</li>
+                    {issueParticipant.collegeName && (
+                      <li className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> {issueParticipant.collegeName}</li>
+                    )}
+                    {issueParticipant.registrationNumber && (
+                      <li className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> {issueParticipant.registrationNumber}</li>
+                    )}
+                  </ul>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="achievement" className="mt-4 space-y-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+                  <p className="font-medium">Achievement Certificate</p>
+                  <p className="mt-1 text-amber-700">
+                    This certificate recognizes the participant's specific achievement or position in the event.
+                  </p>
+                </div>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="position">Position / Achievement *</Label>
+                    <Input
+                      id="position"
+                      value={position}
+                      onChange={(e) => setPosition(e.target.value)}
+                      placeholder="e.g., 1st Place, Best Design, Runner Up"
+                    />
+                    <p className="text-xs text-gray-500">
+                      This will be displayed on the certificate as the participant's position.
+                    </p>
+                  </div>
+                  <div className="space-y-2 p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm font-medium text-gray-700">Certificate will include:</p>
+                    <ul className="text-sm text-gray-600 space-y-1">
+                      <li className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> {issueParticipant.name}</li>
+                      <li className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> {issueParticipant.email}</li>
+                      {issueParticipant.collegeName && (
+                        <li className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> {issueParticipant.collegeName}</li>
+                      )}
+                      {issueParticipant.registrationNumber && (
+                        <li className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> {issueParticipant.registrationNumber}</li>
+                      )}
+                      {position && (
+                        <li className="flex items-center gap-2"><Trophy className="h-3.5 w-3.5 text-amber-500" /> <strong>{position}</strong></li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIssueDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={issueCertificate}
+              disabled={issuing || (certificateType === 'achievement' && !issueParticipant?.eventId.achievementTemplate) || (certificateType === 'participation' && !issueParticipant?.eventId.participationTemplate) || (certificateType === 'achievement' && !position.trim())}
+            >
+              {issuing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Issuing...
+                </>
+              ) : (
+                <>
+                  <Award className="h-4 w-4 mr-2" />
+                  Issue {certificateType === 'achievement' ? 'Achievement' : 'Participation'} Certificate
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

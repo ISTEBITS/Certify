@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
 
     const participants = await Participant.find(query)
       .sort({ createdAt: -1 })
-      .populate('eventId', 'name organizationCode date slug')
+      .populate('eventId', 'name organizationCode date slug participationTemplate achievementTemplate')
       .select('-__v')
       .lean()
 
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, email, eventId } = body
+    const { name, email, eventId, collegeName, registrationNumber } = body
 
     if (!name || !email || !eventId) {
       return NextResponse.json(
@@ -91,6 +91,8 @@ export async function POST(request: NextRequest) {
       name,
       email,
       eventId,
+      collegeName,
+      registrationNumber,
       certificateIssued: false,
     })
 
@@ -153,7 +155,7 @@ export async function PATCH(request: NextRequest) {
 
     for (const participantData of participants) {
       try {
-        const { name, email } = participantData
+        const { name, email, collegeName, registrationNumber } = participantData
 
         if (!name || !email) {
           results.skipped++
@@ -171,6 +173,8 @@ export async function PATCH(request: NextRequest) {
           name,
           email,
           eventId,
+          collegeName,
+          registrationNumber,
           certificateIssued: false,
         })
 

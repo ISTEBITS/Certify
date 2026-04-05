@@ -15,8 +15,10 @@ export interface Event {
   code: string
   date: Date
   location?: string
+  organizationName: string
   organizationCode: string
-  templateConfig?: TemplateConfig
+  participationTemplate?: TemplateConfig
+  achievementTemplate?: TemplateConfig
   certificateCount: number
   createdAt: Date
   updatedAt: Date
@@ -27,6 +29,8 @@ export interface Participant {
   name: string
   email: string
   eventId: string
+  collegeName?: string
+  registrationNumber?: string
   certificateId?: string
   certificateIssued: boolean
   certificateIssuedAt?: Date
@@ -39,6 +43,8 @@ export interface Certificate {
   certificateId: string
   participantId: string
   eventId: string
+  certificateType: 'participation' | 'achievement'
+  position?: string
   templateConfig: TemplateConfig
   issuedAt: Date
   createdAt: Date
@@ -55,7 +61,7 @@ export interface TemplateConfig {
 export interface TemplateElement {
   id: string
   type: 'text' | 'qrcode' | 'image'
-  field?: 'name' | 'event' | 'date' | 'certificateId' | 'custom'
+  field?: 'name' | 'event' | 'date' | 'certificateId' | 'custom' | 'collegeName' | 'registrationNumber' | 'position' | 'email'
   content?: string
   x: number
   y: number
@@ -64,9 +70,29 @@ export interface TemplateElement {
   fontSize?: number
   fontFamily?: string
   fontWeight?: string
+  fontStyle?: string
   color?: string
   textAlign?: 'left' | 'center' | 'right'
   rotation?: number
+  opacity?: number
+  letterSpacing?: number
+  lineHeight?: number
+  textTransform?: 'none' | 'uppercase' | 'lowercase'
+  isBold?: boolean
+  isItalic?: boolean
+  isUnderline?: boolean
+  src?: string
+  imagePublicId?: string
+  // Rich text segments for per-word formatting
+  richTextSegments?: Array<{
+    text: string
+    isBold?: boolean
+    isItalic?: boolean
+    isUnderline?: boolean
+    fontSize?: number
+    color?: string
+    fontFamily?: string
+  }>
 }
 
 export interface CertificateData {
@@ -93,8 +119,16 @@ export interface VerificationResult {
   certificate?: {
     certificateId: string
     participantName: string
+    participantEmail: string
     eventName: string
     eventDate: string
+    organizationName: string
+    organizationCode: string
+    location: string
+    collegeName?: string
+    registrationNumber?: string
+    position?: string
+    certificateType: 'participation' | 'achievement'
     issuedAt: string
   }
   message?: string

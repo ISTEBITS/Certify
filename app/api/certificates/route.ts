@@ -17,7 +17,7 @@ export async function GET() {
 
     const certificates = await Certificate.find()
       .sort({ issuedAt: -1 })
-      .populate('participantId', 'name email')
+      .populate('participantId', 'name email collegeName registrationNumber')
       .populate('eventId', 'name organizationCode date')
       .select('-__v')
       .lean()

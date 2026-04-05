@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -63,20 +63,40 @@ import {
   Copy,
   FilePlus,
   Settings2,
+  GraduationCap,
+  Mail,
+  Building2,
+  Hash,
+  Trophy,
+  Pencil,
+  Plus,
+  X,
 } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { useToast } from '@/components/ui/use-toast'
+import { Toaster } from '@/components/ui/toaster'
+import { Badge } from '@/components/ui/badge'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface Event {
   _id: string
   name: string
-  templateConfig?: TemplateConfig
+  participationTemplate?: TemplateConfig
+  achievementTemplate?: TemplateConfig
 }
 
 interface TemplateElement {
   id: string
   type: 'text' | 'qrcode' | 'image'
-  field?: 'name' | 'event' | 'date' | 'certificateId' | 'custom'
+  field?: 'name' | 'event' | 'date' | 'certificateId' | 'custom' | 'collegeName' | 'registrationNumber' | 'position' | 'email'
   content?: string
   x: number
   y: number
@@ -92,12 +112,26 @@ interface TemplateElement {
   opacity?: number
   letterSpacing?: number
   lineHeight?: number
+  wordSpacing?: number
   textTransform?: 'none' | 'uppercase' | 'lowercase'
   isBold?: boolean
   isItalic?: boolean
   isUnderline?: boolean
   src?: string // for image elements (Cloudinary URL)
   imagePublicId?: string // Cloudinary public ID for deletion
+  // Rich text segments for per-word formatting
+  richTextSegments?: Array<{
+    text: string
+    isBold?: boolean
+    isItalic?: boolean
+    isUnderline?: boolean
+    fontSize?: number
+    color?: string
+    fontFamily?: string
+    field?: string
+    textTransform?: string
+    wordSpacing?: number
+  }>
 }
 
 interface TemplateConfig {
@@ -178,6 +212,7 @@ function getTransformedElementProps(el: TemplateElement): {
 export default function DesignerPage() {
   const [events, setEvents] = useState<Event[]>([])
   const [selectedEvent, setSelectedEvent] = useState<string>('')
+  const [templateType, setTemplateType] = useState<'participation' | 'achievement'>('participation')
   const [template, setTemplate] = useState<TemplateConfig>(DEFAULT_TEMPLATE)
   const [settings, setSettings] = useState<DesignerSettings>(DEFAULT_SETTINGS)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -188,6 +223,16 @@ export default function DesignerPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [customFonts, setCustomFonts] = useState<string[]>([])
+  const { toast } = useToast()
+
+  // Copy Template dialog state
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false)
+  const [copySourceEventId, setCopySourceEventId] = useState('')
+  const [copyingTemplate, setCopyingTemplate] = useState(false)
+
+  // Rich Text Editor dialog state
+  const [editTextEl, setEditTextEl] = useState<TemplateElement | null>(null)
+  const [editTextOpen, setEditTextOpen] = useState(false)
 
   // Undo/Redo history
   const [history, setHistory] = useState<TemplateConfig[]>([])
@@ -208,12 +253,16 @@ export default function DesignerPage() {
   useEffect(() => {
     if (selectedEvent) {
       const event = events.find((e) => e._id === selectedEvent)
-      if (event?.templateConfig) {
-        setTemplate(event.templateConfig)
-        setHistory([event.templateConfig])
+      const tpl = templateType === 'achievement'
+        ? event?.achievementTemplate
+        : event?.participationTemplate
+
+      if (tpl) {
+        setTemplate(tpl)
+        setHistory([tpl])
         setHistoryIndex(0)
-        if (event.templateConfig.backgroundImage) {
-          loadBackgroundImage(event.templateConfig.backgroundImage)
+        if (tpl.backgroundImage) {
+          loadBackgroundImage(tpl.backgroundImage)
         } else {
           setBackgroundImage(null)
         }
@@ -224,8 +273,10 @@ export default function DesignerPage() {
         setHistoryIndex(0)
         setBackgroundImage(null)
       }
+      setSelectedId(null)
+      setSelectedIds([])
     }
-  }, [selectedEvent, events])
+  }, [selectedEvent, templateType, events])
 
   // ─── Keyboard Shortcuts ──────────────────────────────────────────────────
 
@@ -410,14 +461,15 @@ export default function DesignerPage() {
     setError('')
     setSuccess('')
     try {
+      const templateField = templateType === 'achievement' ? 'achievementTemplate' : 'participationTemplate'
       const response = await fetch(`/api/events/${selectedEvent}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateConfig: template }),
+        body: JSON.stringify({ [templateField]: template }),
       })
       const data = await response.json()
       if (response.ok) {
-        setSuccess('Template saved successfully!')
+        setSuccess(`${templateType === 'achievement' ? 'Achievement' : 'Participation'} template saved successfully!`)
         fetchEvents()
       } else {
         setError(data.error || 'Failed to save template')
@@ -427,6 +479,135 @@ export default function DesignerPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  // ─── Copy Template from Another Event ────────────────────────────────────
+
+  const handleCopyTemplate = async () => {
+    if (!copySourceEventId) {
+      toast({ title: 'Please select an event', variant: 'destructive' })
+      return
+    }
+
+    const sourceEvent = events.find((e) => e._id === copySourceEventId)
+    if (!sourceEvent) {
+      toast({ title: 'Selected event not found', variant: 'destructive' })
+      return
+    }
+
+    const sourceTemplate = templateType === 'achievement'
+      ? sourceEvent.achievementTemplate
+      : sourceEvent.participationTemplate
+
+    if (!sourceTemplate) {
+      const typeName = templateType === 'achievement' ? 'achievement' : 'participation'
+      toast({ title: `Selected event has no ${typeName} template`, variant: 'destructive' })
+      return
+    }
+
+    setCopyingTemplate(true)
+    try {
+      const newTemplate = JSON.parse(JSON.stringify(sourceTemplate))
+
+      if (newTemplate.backgroundImage) {
+        loadBackgroundImage(newTemplate.backgroundImage)
+      } else {
+        setBackgroundImage(null)
+      }
+
+      setTemplate(newTemplate)
+      setHistory([newTemplate])
+      setHistoryIndex(0)
+      setSelectedId(null)
+      setSelectedIds([])
+
+      toast({ title: `${templateType === 'achievement' ? 'Achievement' : 'Participation'} template copied successfully!` })
+      setCopyDialogOpen(false)
+      setCopySourceEventId('')
+    } catch (error: any) {
+      toast({ title: 'Failed to copy template', description: error.message, variant: 'destructive' })
+    } finally {
+      setCopyingTemplate(false)
+    }
+  }
+
+  // ─── Rich Text Editor ────────────────────────────────────────────────────
+
+  const openRichTextEditor = (el: TemplateElement) => {
+    setEditTextEl(el)
+    setEditTextOpen(true)
+  }
+
+  const saveRichTextEdits = () => {
+    if (!editTextEl) return
+
+    const editor = document.getElementById('rich-text-editor')
+    if (!editor) return
+
+    // Parse HTML content back to richTextSegments
+    const segments: NonNullable<TemplateElement['richTextSegments']> = []
+
+    // Walk through child nodes and extract styled text
+    const walkNodes = (node: Node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent || ''
+        if (text.trim()) {
+          // Inherit styles from parent
+          const parent = node.parentElement
+          if (parent) {
+            const style = parent.style
+            const computed = window.getComputedStyle(parent)
+            segments.push({
+              text,
+              isBold: computed.fontWeight === 'bold' || parseInt(computed.fontWeight) >= 700 || style.fontWeight === 'bold',
+              isItalic: computed.fontStyle === 'italic' || style.fontStyle === 'italic',
+              isUnderline: computed.textDecoration?.includes('underline') || style.textDecoration === 'underline',
+              fontSize: style.fontSize ? parseInt(style.fontSize) : undefined,
+              color: style.color || undefined,
+              fontFamily: style.fontFamily || undefined,
+            })
+          }
+        }
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        if ((node as HTMLElement).tagName === 'BR') {
+          // Add newline to last segment or create one
+          if (segments.length > 0) {
+            segments[segments.length - 1].text += '\n'
+          } else {
+            segments.push({ text: '\n' })
+          }
+        } else if ((node as HTMLElement).tagName === 'DIV') {
+          // DIV elements usually represent line breaks in contenteditable
+          if (segments.length > 0 && !segments[segments.length - 1].text.endsWith('\n')) {
+            segments[segments.length - 1].text += '\n'
+          }
+          for (const child of Array.from(node.childNodes)) {
+            walkNodes(child)
+          }
+        } else {
+          for (const child of Array.from(node.childNodes)) {
+            walkNodes(child)
+          }
+        }
+      }
+    }
+
+    for (const child of Array.from(editor.childNodes)) {
+      walkNodes(child)
+    }
+
+    // If no segments found, fall back to plain text
+    if (segments.length === 0) {
+      const text = editor.innerText || ''
+      if (text) {
+        segments.push({ text })
+      }
+    }
+
+    commitUpdate(editTextEl.id, { richTextSegments: segments })
+    toast({ title: 'Text formatting saved!' })
+    setEditTextOpen(false)
+    setEditTextEl(null)
   }
 
   // ─── Element CRUD ────────────────────────────────────────────────────────
@@ -440,6 +621,10 @@ export default function DesignerPage() {
       event: { content: 'Event Name', fontSize: 24, width: 300, height: 40 },
       date: { content: 'January 1, 2025', fontSize: 18, width: 200, height: 30 },
       certificateId: { content: 'CERT-2025-000001', fontSize: 14, width: 200, height: 25 },
+      collegeName: { content: 'University of Technology', fontSize: 20, width: 300, height: 35 },
+      registrationNumber: { content: 'REG-2025-12345', fontSize: 16, width: 250, height: 30 },
+      position: { content: '1st Place', fontSize: 28, fontWeight: 'bold', width: 250, height: 40 },
+      email: { content: 'john@example.com', fontSize: 16, width: 250, height: 30 },
       custom: { content: 'Custom Text', fontSize: 20, width: 250, height: 35 },
       qrcode: { width: 100, height: 100 },
     }
@@ -911,124 +1096,148 @@ export default function DesignerPage() {
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col">
       {/* Header Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-white border-b gap-4 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <h1 className="text-lg font-bold text-gray-900">Certificate Designer</h1>
-          <Separator orientation="vertical" className="h-6" />
-          <Select value={selectedEvent} onValueChange={setSelectedEvent}>
-            <SelectTrigger className="w-56 h-8 text-sm">
-              <SelectValue placeholder="Choose an event" />
-            </SelectTrigger>
-            <SelectContent>
-              {events.map((event) => (
-                <SelectItem key={event._id} value={event._id}>
-                  {event.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="flex items-center justify-between px-4 py-2 bg-white border-b gap-2 flex-nowrap w-full max-w-full overflow-hidden shrink-0 h-12">
+        {/* Left Section: Title & Event Selection */}
+        <div className="flex items-center gap-2 min-w-0 flex-shrink-1">
+          <h1 className="text-lg font-bold text-gray-900 whitespace-nowrap hidden xl:block">
+            Designer
+          </h1>
+          <Separator orientation="vertical" className="h-6 hidden xl:block" />
+
+          <div className="min-w-[140px] flex-shrink-1">
+            <Select value={selectedEvent} onValueChange={setSelectedEvent}>
+              <SelectTrigger className="w-full lg:w-48 h-8 text-sm">
+                <SelectValue placeholder="Event" />
+              </SelectTrigger>
+              <SelectContent>
+                {events.map((event) => (
+                  <SelectItem key={event._id} value={event._id}>
+                    {event.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {selectedEvent && (
+            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5 flex-shrink-0">
+              <button
+                onClick={() => setTemplateType('participation')}
+                className={`px-2 lg:px-3 py-1 text-[10px] lg:text-xs font-medium rounded-md transition-all whitespace-nowrap ${templateType === 'participation'
+                    ? 'bg-white shadow text-gray-900'
+                    : 'text-gray-500 hover:text-gray-700'
+                  }`}
+              >
+                <GraduationCap className="h-3 w-3 inline mr-1" />
+                <span className="hidden sm:inline">Participation</span>
+              </button>
+              <button
+                onClick={() => setTemplateType('achievement')}
+                className={`px-2 lg:px-3 py-1 text-[10px] lg:text-xs font-medium rounded-md transition-all whitespace-nowrap ${templateType === 'achievement'
+                    ? 'bg-white shadow text-gray-900'
+                    : 'text-gray-500 hover:text-gray-700'
+                  }`}
+              >
+                <Trophy className="h-3 w-3 inline mr-1" />
+                <span className="hidden sm:inline">Achievement</span>
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Zoom Controls */}
+        {/* Center Section: Canvas Controls */}
         {selectedEvent && (
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => setSettings((s) => ({ ...s, zoom: Math.max(s.zoom - 0.1, 0.1) }))}
-            >
-              <ZoomOut className="h-3.5 w-3.5" />
-            </Button>
-            <span className="text-xs font-mono w-12 text-center">
-              {Math.round(settings.zoom * 100)}%
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => setSettings((s) => ({ ...s, zoom: Math.min(s.zoom + 0.1, 3) }))}
-            >
-              <ZoomIn className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => setSettings((s) => ({ ...s, zoom: 1 }))}
-            >
-              <Maximize2 className="h-3.5 w-3.5" />
-            </Button>
-            <Separator orientation="vertical" className="h-6 mx-1" />
+          <div className="flex items-center gap-0.5 lg:gap-1 flex-shrink-0 bg-gray-50/50 px-2 py-1 rounded-md border border-gray-100">
+            <div className="flex items-center">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setSettings((s) => ({ ...s, zoom: Math.max(s.zoom - 0.1, 0.1) }))}
+              >
+                <ZoomOut className="h-3.5 w-3.5" />
+              </Button>
+              <span className="text-[10px] font-mono w-10 text-center hidden md:inline">
+                {Math.round(settings.zoom * 100)}%
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setSettings((s) => ({ ...s, zoom: Math.min(s.zoom + 0.1, 3) }))}
+              >
+                <ZoomIn className="h-3.5 w-3.5" />
+              </Button>
+            </div>
 
-            {/* Undo/Redo */}
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={undo} disabled={historyIndex <= 0}>
-              <Undo2 className="h-3.5 w-3.5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={redo} disabled={historyIndex >= history.length - 1}>
-              <Redo2 className="h-3.5 w-3.5" />
-            </Button>
-            <Separator orientation="vertical" className="h-6 mx-1" />
+            <Separator orientation="vertical" className="h-4 mx-0.5" />
 
-            {/* Grid */}
-            <Button
-              variant={settings.showGrid ? 'secondary' : 'ghost'}
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => setSettings((s) => ({ ...s, showGrid: !s.showGrid }))}
-              title="Toggle Grid"
-            >
-              <Grid3X3 className="h-3.5 w-3.5" />
-            </Button>
+            <div className="flex items-center">
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={undo} disabled={historyIndex <= 0}>
+                <Undo2 className="h-3.5 w-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={redo} disabled={historyIndex >= history.length - 1}>
+                <Redo2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
 
-            {/* Snap */}
-            <Button
-              variant={settings.snapToGrid ? 'secondary' : 'ghost'}
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => setSettings((s) => ({ ...s, snapToGrid: !s.snapToGrid }))}
-              title="Snap to Grid"
-            >
-              <Magnet className="h-3.5 w-3.5" />
-            </Button>
+            <Separator orientation="vertical" className="h-4 mx-0.5 hidden sm:block" />
 
-            {/* Rulers */}
-            <Button
-              variant={settings.showRulers ? 'secondary' : 'ghost'}
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => setSettings((s) => ({ ...s, showRulers: !s.showRulers }))}
-              title="Toggle Rulers"
-            >
-              <Crop className="h-3.5 w-3.5" />
-            </Button>
-
-            {/* Safe Margins */}
-            <Button
-              variant={settings.showSafeMargins ? 'secondary' : 'ghost'}
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => setSettings((s) => ({ ...s, showSafeMargins: !s.showSafeMargins }))}
-              title="Toggle Safe Margins"
-            >
-              <EyeOff className="h-3.5 w-3.5" />
-            </Button>
+            <div className="hidden sm:flex items-center gap-0.5">
+              <Button
+                variant={settings.showGrid ? 'secondary' : 'ghost'}
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setSettings((s) => ({ ...s, showGrid: !s.showGrid }))}
+              >
+                <Grid3X3 className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant={settings.snapToGrid ? 'secondary' : 'ghost'}
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setSettings((s) => ({ ...s, snapToGrid: !s.snapToGrid }))}
+              >
+                <Magnet className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={downloadPreview} disabled={!selectedEvent}>
-            <Eye className="h-3.5 w-3.5 mr-1.5" />
-            Preview
+        {/* Right Section: Action Buttons */}
+        <div className="flex items-center gap-1 lg:gap-2 flex-shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-2 lg:px-3"
+            onClick={() => setCopyDialogOpen(true)}
+            disabled={!selectedEvent}
+          >
+            <Copy className="h-3.5 w-3.5 lg:mr-1.5" />
+            <span className="hidden lg:inline text-xs">Copy</span>
           </Button>
-          <Button size="sm" onClick={saveTemplate} disabled={saving || !selectedEvent}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-2 lg:px-3"
+            onClick={downloadPreview}
+            disabled={!selectedEvent}
+          >
+            <Eye className="h-3.5 w-3.5 lg:mr-1.5" />
+            <span className="hidden lg:inline text-xs">Preview</span>
+          </Button>
+          <Button
+            size="sm"
+            className="h-8 px-2 lg:px-3"
+            onClick={saveTemplate}
+            disabled={saving || !selectedEvent}
+          >
             {saving ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin lg:mr-1.5" />
             ) : (
-              <Save className="h-3.5 w-3.5 mr-1.5" />
+              <Save className="h-3.5 w-3.5 lg:mr-1.5" />
             )}
-            Save
+            <span className="hidden sm:inline text-xs">Save</span>
           </Button>
         </div>
       </div>
@@ -1068,11 +1277,23 @@ export default function DesignerPage() {
                     <Button variant="outline" size="sm" className="w-full justify-start h-7 text-xs" onClick={() => addElement('text', 'name')}>
                       <Type className="h-3 w-3 mr-1.5" /> Participant Name
                     </Button>
+                    <Button variant="outline" size="sm" className="w-full justify-start h-7 text-xs" onClick={() => addElement('text', 'email')}>
+                      <Mail className="h-3 w-3 mr-1.5" /> Participant Email
+                    </Button>
+                    <Button variant="outline" size="sm" className="w-full justify-start h-7 text-xs" onClick={() => addElement('text', 'collegeName')}>
+                      <Building2 className="h-3 w-3 mr-1.5" /> College Name
+                    </Button>
+                    <Button variant="outline" size="sm" className="w-full justify-start h-7 text-xs" onClick={() => addElement('text', 'registrationNumber')}>
+                      <Hash className="h-3 w-3 mr-1.5" /> Registration No.
+                    </Button>
                     <Button variant="outline" size="sm" className="w-full justify-start h-7 text-xs" onClick={() => addElement('text', 'event')}>
                       <Type className="h-3 w-3 mr-1.5" /> Event Name
                     </Button>
                     <Button variant="outline" size="sm" className="w-full justify-start h-7 text-xs" onClick={() => addElement('text', 'date')}>
                       <Type className="h-3 w-3 mr-1.5" /> Event Date
+                    </Button>
+                    <Button variant="outline" size="sm" className="w-full justify-start h-7 text-xs" onClick={() => addElement('text', 'position')}>
+                      <Trophy className="h-3 w-3 mr-1.5" /> Position (Achievement)
                     </Button>
                     <Button variant="outline" size="sm" className="w-full justify-start h-7 text-xs" onClick={() => addElement('text', 'certificateId')}>
                       <Type className="h-3 w-3 mr-1.5" /> Certificate ID
@@ -1142,9 +1363,8 @@ export default function DesignerPage() {
                       {template.elements.map((el, i) => (
                         <div
                           key={el.id}
-                          className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs cursor-pointer hover:bg-gray-100 ${
-                            selectedId === el.id ? 'bg-primary/10 ring-1 ring-primary/30' : ''
-                          }`}
+                          className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs cursor-pointer hover:bg-gray-100 ${selectedId === el.id ? 'bg-primary/10 ring-1 ring-primary/30' : ''
+                            }`}
                           onClick={() => {
                             setSelectedId(el.id)
                             setSelectedIds([el.id])
@@ -1175,7 +1395,7 @@ export default function DesignerPage() {
                               }}
                               title="Move Up"
                             >
-                              <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 15l-6-6-6 6"/></svg>
+                              <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 15l-6-6-6 6" /></svg>
                             </button>
                             <button
                               className="p-0.5 hover:text-primary"
@@ -1185,7 +1405,7 @@ export default function DesignerPage() {
                               }}
                               title="Move Down"
                             >
-                              <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
+                              <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6" /></svg>
                             </button>
                           </div>
                         </div>
@@ -1489,6 +1709,22 @@ export default function DesignerPage() {
                           />
                         </div>
                         <div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full h-7 text-xs"
+                            onClick={() => openRichTextEditor(selectedElement)}
+                          >
+                            <Pencil className="h-3 w-3 mr-1.5" />
+                            Format Text (Rich Text)
+                          </Button>
+                          {(selectedElement as any).richTextSegments?.length > 0 && (
+                            <Badge variant="secondary" className="w-full mt-1 text-[10px] justify-center">
+                              {(selectedElement as any).richTextSegments.length} segment(s) configured
+                            </Badge>
+                          )}
+                        </div>
+                        <div>
                           <Label className="text-[10px] text-gray-500">Font Family</Label>
                           <Select
                             value={selectedElement.fontFamily || 'Arial'}
@@ -1648,6 +1884,17 @@ export default function DesignerPage() {
                           />
                         </div>
                         <div>
+                          <Label className="text-[10px] text-gray-500">Word Spacing: {selectedElement.wordSpacing || 0}px</Label>
+                          <Slider
+                            value={[selectedElement.wordSpacing || 0]}
+                            onValueChange={(v) => updateElement(selectedElement.id, { wordSpacing: v[0] })}
+                            onValueCommit={(v) => commitUpdate(selectedElement.id, { wordSpacing: v[0] })}
+                            min={0}
+                            max={30}
+                            step={1}
+                          />
+                        </div>
+                        <div>
                           <Label className="text-[10px] text-gray-500">Line Height: {selectedElement.lineHeight || 1.2}</Label>
                           <Slider
                             value={[selectedElement.lineHeight || 1.2]}
@@ -1779,10 +2026,10 @@ export default function DesignerPage() {
                           <SendToBack className="h-3.5 w-3.5" />
                         </Button>
                         <Button variant="outline" size="sm" className="h-7 p-0" onClick={() => moveLayer(selectedElement.id, 'up')} title="Move Up">
-                          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 15l-6-6-6 6"/></svg>
+                          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 15l-6-6-6 6" /></svg>
                         </Button>
                         <Button variant="outline" size="sm" className="h-7 p-0" onClick={() => moveLayer(selectedElement.id, 'down')} title="Move Down">
-                          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
+                          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6" /></svg>
                         </Button>
                       </div>
                     </CardContent>
@@ -1811,11 +2058,345 @@ export default function DesignerPage() {
           </>
         )}
       </div>
+
+      {/* Copy Template Dialog */}
+      <Dialog open={copyDialogOpen} onOpenChange={setCopyDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Copy Certificate Template</DialogTitle>
+            <DialogDescription>
+              Select another event to copy its certificate template from. This will replace the current template in the designer (unsaved changes will be lost).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Label>Select Source Event</Label>
+            <Select value={copySourceEventId} onValueChange={setCopySourceEventId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose an event..." />
+              </SelectTrigger>
+              <SelectContent>
+                {events
+                  .filter((e) => {
+                    if (e._id === selectedEvent) return false
+                    const src = templateType === 'achievement' ? e.achievementTemplate : e.participationTemplate
+                    return src && src.elements && src.elements.length > 0
+                  })
+                  .map((event) => {
+                    const src = templateType === 'achievement' ? event.achievementTemplate : event.participationTemplate
+                    return (
+                      <SelectItem key={event._id} value={event._id}>
+                        {event.name} ({src?.elements?.length || 0} elements)
+                      </SelectItem>
+                    )
+                  })}
+              </SelectContent>
+            </Select>
+            {events.filter((e) => {
+              if (e._id === selectedEvent) return false
+              const src = templateType === 'achievement' ? e.achievementTemplate : e.participationTemplate
+              return src && src.elements && src.elements.length > 0
+            }).length === 0 && (
+                <p className="text-sm text-gray-500 text-center py-4">
+                  No other events with a {templateType} template available.
+                </p>
+              )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCopyDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCopyTemplate} disabled={copyingTemplate || !copySourceEventId}>
+              {copyingTemplate && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Copy Template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rich Text Editor Dialog */}
+      <Dialog open={editTextOpen} onOpenChange={setEditTextOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle>Rich Text Editor</DialogTitle>
+            <DialogDescription>
+              Type your text below. Select any portion and use the toolbar to apply formatting.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-3">
+            {/* Formatting Toolbar */}
+            <div className="flex items-center gap-1 p-2 bg-gray-50 rounded-lg border flex-wrap">
+              <button
+                onMouseDown={(e) => { e.preventDefault(); document.execCommand('bold', false) }}
+                className="p-1.5 rounded hover:bg-gray-200"
+                title="Bold"
+              >
+                <Bold className="h-4 w-4" />
+              </button>
+              <button
+                onMouseDown={(e) => { e.preventDefault(); document.execCommand('italic', false) }}
+                className="p-1.5 rounded hover:bg-gray-200"
+                title="Italic"
+              >
+                <Italic className="h-4 w-4" />
+              </button>
+              <button
+                onMouseDown={(e) => { e.preventDefault(); document.execCommand('underline', false) }}
+                className="p-1.5 rounded hover:bg-gray-200"
+                title="Underline"
+              >
+                <Underline className="h-4 w-4" />
+              </button>
+              <div className="w-px h-6 bg-gray-300 mx-1" />
+              <select
+                className="h-7 text-xs border rounded px-1"
+                onMouseDown={(e) => e.stopPropagation()}
+                onChange={(e) => {
+                  document.execCommand('fontSize', false, '7')
+                  // Replace the size 7 font elements with the selected size
+                  const fontEls = document.querySelectorAll('font[size="7"]')
+                  fontEls.forEach((el) => {
+                    const size = e.target.value
+                    el.removeAttribute('size')
+                      ; (el as HTMLElement).style.fontSize = `${size}px`
+                  })
+                }}
+                defaultValue=""
+              >
+                <option value="" disabled>Font Size</option>
+                {[12, 14, 16, 18, 20, 24, 28, 32, 36, 42, 48, 56, 64, 72].map((s) => (
+                  <option key={s} value={s}>{s}px</option>
+                ))}
+              </select>
+              <input
+                type="color"
+                className="w-7 h-7 rounded border cursor-pointer"
+                onMouseDown={(e) => e.stopPropagation()}
+                onChange={(e) => {
+                  const color = e.target.value
+                  document.execCommand('foreColor', false, color)
+                }}
+                title="Text Color"
+              />
+              <div className="w-px h-6 bg-gray-300 mx-1" />
+              <select
+                className="h-7 text-xs border rounded px-1 max-w-[120px]"
+                onMouseDown={(e) => e.stopPropagation()}
+                onChange={(e) => {
+                  const font = e.target.value
+                  document.execCommand('fontName', false, font)
+                }}
+                defaultValue=""
+              >
+                <option value="" disabled>Font Family</option>
+                {FONT_FAMILIES.map((f) => (
+                  <option key={f} value={f} style={{ fontFamily: f }}>{f}</option>
+                ))}
+                {customFonts.map((f) => (
+                  <option key={f} value={f} style={{ fontFamily: f }}>{f} (Custom)</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Content Editable Area */}
+            <div
+              contentEditable
+              suppressContentEditableWarning
+              id="rich-text-editor"
+              className="min-h-[160px] max-h-[300px] overflow-y-auto border rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              dangerouslySetInnerHTML={{
+                __html: (() => {
+                  const el = editTextEl
+                  if (el?.richTextSegments && el.richTextSegments.length > 0) {
+                    return el.richTextSegments
+                      .map((seg) => {
+                        const styles: string[] = []
+                        if (seg.isBold) styles.push('font-weight: bold')
+                        if (seg.isItalic) styles.push('font-style: italic')
+                        if (seg.isUnderline) styles.push('text-decoration: underline')
+                        if (seg.fontSize) styles.push(`font-size: ${seg.fontSize}px`)
+                        if (seg.color) styles.push(`color: ${seg.color}`)
+                        if (seg.fontFamily) styles.push(`font-family: ${seg.fontFamily}`)
+                        return `<span style="${styles.join('; ')}">${seg.text.replace(/\n/g, '<br>')}</span>`
+                      })
+                      .join(' ')
+                  }
+                  return el?.content || 'Start typing...'
+                })(),
+              }}
+              style={{ fontFamily: 'Arial, sans-serif', lineHeight: '1.5' }}
+            />
+            <p className="text-xs text-gray-400">
+              Tip: Select text with your mouse, then click a formatting button above.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditTextOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={saveRichTextEdits}>
+              Save Formatting
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Toaster />
     </div>
   )
 }
 
 // ─── Element Component ───────────────────────────────────────────────────────
+
+// Helper to measure text width using a canvas context
+const _measureCtx = typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null
+
+function measureTextWidth(text: string, fontSize: number, fontFamily: string): number {
+  if (!_measureCtx) return text.length * fontSize * 0.6
+  _measureCtx.font = `${fontSize}px ${fontFamily}`
+  return _measureCtx.measureText(text).width
+}
+
+// Render rich text segments as a series of Konva Text nodes
+function renderRichTextSegments(element: TemplateElement): React.ReactElement[] {
+  const segments = element.richTextSegments || []
+  if (segments.length === 0) return []
+
+  const wordSpacing = element.wordSpacing || 0
+  const align = element.textAlign || 'left'
+  const lineHeight = element.lineHeight || 1.2
+  const containerWidth = element.width || 400
+  const elements: React.ReactElement[] = []
+
+  // Build text objects with positioning
+  type SegmentLine = {
+    segmentIdx: number
+    text: string
+    x: number
+    y: number
+    fontSize: number
+    fontFamily: string
+    fontStyle: string
+    fill: string
+    textDecoration: string
+    letterSpacing: number
+  }
+
+  let lines: SegmentLine[][] = [[]]
+  let currentLineWidth = 0
+  let currentLineIdx = 0
+  let cursorX = 0
+
+  // First pass: lay out text with wrapping
+  for (let s = 0; s < segments.length; s++) {
+    const seg = segments[s]
+    if (!seg.text) continue
+
+    // Split by newlines
+    const parts = seg.text.split('\n')
+    const fontSize = seg.fontSize || element.fontSize || 24
+    const fontFamily = seg.fontFamily || element.fontFamily || 'Arial'
+    const letterSpacing = 0 // handle letterSpacing separately
+
+    for (let p = 0; p < parts.length; p++) {
+      if (p > 0) {
+        // Newline: move to next line
+        currentLineIdx++
+        lines.push([])
+        cursorX = 0
+        currentLineWidth = 0
+      }
+
+      const text = parts[p]
+      if (!text) continue
+
+      // Split text into words
+      const words = text.split(/(\s+)/) // Keep whitespace to handle word spacing
+      let wordX = cursorX
+
+      for (const word of words) {
+        const isSpace = /^\s+$/.test(word)
+        if (isSpace) {
+          const spaceWidth = word.length * (wordSpacing + 4) // base 4px per space char + extra wordSpacing
+          wordX += spaceWidth
+          currentLineWidth += spaceWidth
+          continue
+        }
+
+        const wordWithSpacing = word
+        const measuredWidth = measureTextWidth(wordWithSpacing, fontSize, fontFamily) + letterSpacing * word.length
+
+        // Check if this word fits on current line
+        if (currentLineWidth + measuredWidth > containerWidth && currentLineWidth > 0) {
+          // Wrap to next line
+          currentLineIdx++
+          lines.push([])
+          cursorX = 0
+          currentLineWidth = 0
+          wordX = 0
+        }
+
+        // Add word to current line
+        lines[currentLineIdx].push({
+          segmentIdx: s,
+          text: wordWithSpacing,
+          x: wordX,
+          y: 0, // will be calculated in second pass
+          fontSize,
+          fontFamily,
+          fontStyle: `${seg.isBold ? 'bold' : ''} ${seg.isItalic ? 'italic' : ''}`.trim() || 'normal',
+          fill: seg.color || element.color || '#000000',
+          textDecoration: seg.isUnderline ? 'underline' : '',
+          letterSpacing: 0,
+        })
+
+        currentLineWidth += measuredWidth
+        wordX += measuredWidth
+      }
+
+      cursorX = wordX
+    }
+  }
+
+  // Second pass: apply alignment and calculate Y positions
+  const baseFontSize = element.fontSize || 24
+  const baseLineHeight = baseFontSize * lineHeight
+
+  for (let li = 0; li < lines.length; li++) {
+    const line = lines[li]
+    if (line.length === 0) continue
+
+    // Calculate line width
+    let lineWidth = 0
+    for (const item of line) {
+      lineWidth += measureTextWidth(item.text, item.fontSize, item.fontFamily)
+    }
+
+    // Apply alignment offset
+    let offsetX = 0
+    if (align === 'center') offsetX = (containerWidth - lineWidth) / 2
+    else if (align === 'right') offsetX = containerWidth - lineWidth
+
+    const y = li * baseLineHeight
+
+    for (const item of line) {
+      elements.push(
+        <Text
+          key={`${li}-${item.segmentIdx}-${item.text}`}
+          text={item.text}
+          x={item.x + offsetX}
+          y={y}
+          fontSize={item.fontSize}
+          fontFamily={item.fontFamily}
+          fontStyle={item.fontStyle}
+          fill={item.fill}
+          textDecoration={item.textDecoration}
+        />
+      )
+    }
+  }
+
+  return elements
+}
 
 function ElementComponent({
   element,
@@ -1859,6 +2440,140 @@ function ElementComponent({
   }
 
   if (element.type === 'text') {
+    // Rich text segments rendering: Group acts as single draggable unit
+    if (element.richTextSegments && element.richTextSegments.length > 0) {
+      // Calculate approximate height from segments
+      const numLines = element.richTextSegments.reduce((acc, seg) => acc + (seg.text?.split('\n').length || 1), 0)
+      const approxHeight = Math.max(numLines * (element.fontSize || 24) * (element.lineHeight || 1.2), element.height || 40)
+
+      return (
+        <>
+          <Group
+            ref={shapeRef}
+            x={element.x}
+            y={element.y}
+            rotation={element.rotation || 0}
+            opacity={element.opacity ?? 1}
+            draggable
+            onClick={onSelect}
+            onTap={onSelect}
+            onDragEnd={(e) => onDragEnd(e, element.id)}
+          >
+            {/* Bounding rect for visual selection indicator */}
+            <Rect
+              x={0}
+              y={0}
+              width={element.width}
+              height={approxHeight}
+              fill="transparent"
+              stroke={isSelected ? '#3b82f6' : 'transparent'}
+              strokeWidth={isSelected ? 2 : 0}
+              dash={isSelected ? [6, 3] : []}
+            />
+            {/* Text segments rendered inside the group */}
+            {renderRichTextSegments(element)}
+          </Group>
+          {/* No Transformer for rich text - selection shown via dashed border on the Group */}
+        </>
+      )
+    }
+
+    // If wordSpacing is set, render as word-by-word for proper spacing
+    if ((element.wordSpacing || 0) > 0) {
+      const text = getProcessedText()
+      const words = text.split(' ')
+      const fontSize = element.fontSize || 24
+      const fontFamily = element.fontFamily || 'Arial'
+      const letterSpacing = element.letterSpacing || 0
+      const wordSpacing = element.wordSpacing || 0
+      const align = element.textAlign || 'left'
+      const lineHeight = element.lineHeight || 1.2
+      const containerWidth = element.width || 200
+
+      // Calculate word positions with spacing
+      const wordElements: { text: string; x: number; y: number }[] = []
+      let currentX = 0
+      let currentY = 0
+      let lineStartIdx = 0
+
+      for (let i = 0; i < words.length; i++) {
+        const word = words[i]
+        const wordWidth = measureTextWidth(word, fontSize, fontFamily) + letterSpacing * word.length
+        const spaceAfterWidth = i < words.length - 1 ? wordSpacing : 0
+
+        // Check if word fits on current line
+        if (currentX + wordWidth > containerWidth && currentX > 0) {
+          // Move to next line
+          currentY += fontSize * lineHeight
+          currentX = 0
+        }
+
+        wordElements.push({ text: word, x: currentX, y: currentY })
+        currentX += wordWidth + spaceAfterWidth
+      }
+
+      // Apply alignment
+      const maxLineWidth = Math.max(
+        ...wordElements.reduce((acc, el, idx) => {
+          if (idx === wordElements.length - 1 || wordElements[idx + 1].y !== el.y) {
+            acc.push(el.x + measureTextWidth(el.text, fontSize, fontFamily))
+          }
+          return acc
+        }, [] as number[]),
+        0
+      )
+
+      return (
+        <>
+          <Group
+            ref={shapeRef}
+            x={element.x}
+            y={element.y}
+            rotation={element.rotation || 0}
+            opacity={element.opacity ?? 1}
+            draggable
+            onClick={onSelect}
+            onTap={onSelect}
+            onDragEnd={(e) => onDragEnd(e, element.id)}
+          >
+            {wordElements.map((word, idx) => {
+              let offsetX = word.x
+              if (align === 'center') {
+                offsetX = word.x + (containerWidth - maxLineWidth) / 2
+              } else if (align === 'right') {
+                offsetX = word.x + (containerWidth - maxLineWidth)
+              }
+
+              return (
+                <Text
+                  key={idx}
+                  text={word.text}
+                  x={offsetX}
+                  y={word.y}
+                  fontSize={fontSize}
+                  fontFamily={fontFamily}
+                  fontStyle={getFontStyle().trim() || 'normal'}
+                  fill={element.color || '#000000'}
+                  letterSpacing={letterSpacing}
+                  textDecoration={element.isUnderline ? 'underline' : ''}
+                />
+              )
+            })}
+          </Group>
+          {isSelected && (
+            <Transformer
+              ref={trRef}
+              anchorSize={8}
+              anchorCornerRadius={4}
+              borderStroke="#3b82f6"
+              anchorStroke="#3b82f6"
+              anchorFill="#ffffff"
+            />
+          )}
+        </>
+      )
+    }
+
     return (
       <>
         <Text

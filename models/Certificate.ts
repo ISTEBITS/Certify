@@ -4,6 +4,8 @@ export interface ICertificate extends Document {
   certificateId: string
   participantId: mongoose.Types.ObjectId
   eventId: mongoose.Types.ObjectId
+  certificateType: 'participation' | 'achievement'
+  position?: string
   templateConfig: {
     width: number
     height: number
@@ -58,6 +60,15 @@ const CertificateSchema = new Schema<ICertificate>(
       ref: 'Event',
       required: true,
     },
+    certificateType: {
+      type: String,
+      enum: ['participation', 'achievement'],
+      default: 'participation',
+    },
+    position: {
+      type: String,
+      trim: true,
+    },
     templateConfig: {
       width: { type: Number, required: true },
       height: { type: Number, required: true },
@@ -66,7 +77,7 @@ const CertificateSchema = new Schema<ICertificate>(
       elements: [{
         id: String,
         type: { type: String, enum: ['text', 'qrcode', 'image'], required: true },
-        field: { type: String, enum: ['name', 'event', 'date', 'certificateId', 'custom'] },
+        field: { type: String, enum: ['name', 'event', 'date', 'certificateId', 'custom', 'collegeName', 'registrationNumber', 'position', 'email'] },
         content: String,
         x: { type: Number, required: true },
         y: { type: Number, required: true },

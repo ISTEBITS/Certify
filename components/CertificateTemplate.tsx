@@ -56,11 +56,36 @@ export const CertificatePDF = ({ cert }: { cert: any }) => {
         day: 'numeric',
       });
     } else if (el.field === 'certificateId') content = certificateId || '';
+    else if (el.field === 'collegeName') content = participantId?.collegeName || '';
+    else if (el.field === 'registrationNumber') content = participantId?.registrationNumber || '';
+    else if (el.field === 'position') content = cert.position || '';
+    else if (el.field === 'email') content = participantId?.email || '';
 
     if (el.textTransform === 'uppercase') content = content.toUpperCase();
     else if (el.textTransform === 'lowercase') content = content.toLowerCase();
 
     return content;
+  };
+
+  // Check if element has rich text segments
+  const hasRichTextSegments = (el: any): boolean => {
+    return Array.isArray(el.richTextSegments) && el.richTextSegments.length > 0;
+  };
+
+  // Get style for a rich text segment
+  const getRichTextStyle = (segment: any, baseEl: any) => {
+    const fontFamily = getPdfFontFamily(segment.fontFamily || baseEl.fontFamily);
+    const isBold = segment.isBold !== undefined ? segment.isBold : (baseEl.isBold || baseEl.fontWeight === 'bold');
+    const isItalic = segment.isItalic !== undefined ? segment.isItalic : (baseEl.isItalic || baseEl.fontStyle === 'italic');
+
+    return {
+      fontSize: segment.fontSize || baseEl.fontSize || 20,
+      fontFamily,
+      fontWeight: isBold ? 'bold' as const : 'normal' as const,
+      fontStyle: isItalic ? 'italic' as const : 'normal' as const,
+      color: segment.color || baseEl.color || '#000000',
+      textDecoration: (segment.isUnderline || baseEl.isUnderline) ? 'underline' as const : 'none' as const,
+    };
   };
 
   const getTextStyle = (el: any) => {
@@ -118,22 +143,54 @@ export const CertificatePDF = ({ cert }: { cert: any }) => {
           }
 
           if (el.type === 'text') {
-            const content = getProcessedText(el);
             const textBaseStyle: any = {
               position: 'absolute' as const,
               left: el.x || 0,
               top: el.y || 0,
               width: el.width || undefined,
-              // height: undefined to allow text to wrap without clipping
               opacity: el.opacity !== undefined ? el.opacity : 1,
             };
 
-            // Handle rotation
             if (el.rotation) {
               textBaseStyle.transform = `rotate(${el.rotation}deg)`;
               textBaseStyle.transformOrigin = 'center center';
             }
 
+            // If element has rich text segments, render each segment separately
+            if (hasRichTextSegments(el)) {
+              return (
+                <View key={el.id} style={textBaseStyle}>
+                  {el.richTextSegments.map((segment: any, idx: number) => {
+                    let segText = segment.text || '';
+                    // Substitute fields in segment text
+                    if (segment.field === 'name') segText = participantId?.name || '';
+                    else if (segment.field === 'event') segText = eventId?.name || '';
+                    else if (segment.field === 'date') {
+                      segText = new Date(eventId?.date).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      });
+                    } else if (segment.field === 'certificateId') segText = certificateId || '';
+                    else if (segment.field === 'collegeName') segText = participantId?.collegeName || '';
+                    else if (segment.field === 'registrationNumber') segText = participantId?.registrationNumber || '';
+                    else if (segment.field === 'position') segText = cert.position || '';
+                    else if (segment.field === 'email') segText = participantId?.email || '';
+
+                    if (segment.textTransform === 'uppercase') segText = segText.toUpperCase();
+                    else if (segment.textTransform === 'lowercase') segText = segText.toLowerCase();
+
+                    return (
+                      <Text key={idx} style={getRichTextStyle(segment, el)}>
+                        {segText}
+                      </Text>
+                    );
+                  })}
+                </View>
+              );
+            }
+
+            const content = getProcessedText(el);
             return (
               <View key={el.id} style={textBaseStyle}>
                 <Text style={getTextStyle(el)}>{content}</Text>

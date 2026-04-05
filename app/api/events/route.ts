@@ -41,7 +41,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, description, date, location, organizationCode, customSlug } = body
+    console.log(body)
+    const { name, description, date, location,organizationName, organizationCode, customSlug } = body
 
     if (!name || !date || !organizationCode) {
       return NextResponse.json(
@@ -100,6 +101,7 @@ export async function POST(request: NextRequest) {
       code,
       date: new Date(date),
       location,
+      organizationName,
       organizationCode: organizationCode.toUpperCase(),
       certificateCount: 0,
     })

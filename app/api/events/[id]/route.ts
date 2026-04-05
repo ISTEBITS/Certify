@@ -94,7 +94,7 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { name, description, date, location, organizationCode, templateConfig, customSlug } = body
+    const { name, description, date, location, organizationCode, participationTemplate, achievementTemplate, customSlug } = body
 
     await connectDB()
 
@@ -104,7 +104,8 @@ export async function PUT(
     if (date) updateData.date = new Date(date)
     if (location !== undefined) updateData.location = location
     if (organizationCode) updateData.organizationCode = organizationCode.toUpperCase()
-    if (templateConfig) updateData.templateConfig = templateConfig
+    if (participationTemplate !== undefined) updateData.participationTemplate = participationTemplate
+    if (achievementTemplate !== undefined) updateData.achievementTemplate = achievementTemplate
     
     // Handle custom slug update
     if (customSlug !== undefined) {

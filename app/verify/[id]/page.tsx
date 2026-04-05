@@ -5,18 +5,21 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import {
   CheckCircle,
   XCircle,
   Award,
-  Calendar,
   User,
   Building2,
   Download,
   Loader2,
   Shield,
   FileText,
+  Mail,
+  GraduationCap,
+  Trophy,
+  Calendar,
 } from 'lucide-react'
 import QRCode from 'qrcode'
 import { pdf } from '@react-pdf/renderer'
@@ -30,7 +33,13 @@ interface CertificateData {
     participantEmail: string
     eventName: string
     eventDate: string
+    organizationName: string
     organizationCode: string
+    location: string
+    collegeName?: string
+    registrationNumber?: string
+    position?: string
+    certificateType: 'participation' | 'achievement'
     issuedAt: string
   }
   message?: string
@@ -88,24 +97,32 @@ const prepareCertificateForPdf = async (certificate: any) => {
 }
 
 interface FullCertificate {
+  _id: string
   certificateId: string
+  certificateType?: 'participation' | 'achievement'
+  position?: string
   participantId: {
     name: string
     email: string
+    collegeName?: string
+    registrationNumber?: string
   }
   eventId: {
     name: string
     date: string
+    organizationName: string
     organizationCode: string
+    location: string
   }
   templateConfig: {
     width: number
     height: number
     backgroundImage?: string
+    backgroundImagePublicId?: string
     elements: Array<{
       id: string
       type: 'text' | 'qrcode' | 'image'
-      field?: 'name' | 'event' | 'date' | 'certificateId' | 'custom'
+      field?: 'name' | 'event' | 'date' | 'certificateId' | 'custom' | 'collegeName' | 'registrationNumber' | 'position' | 'email'
       content?: string
       x: number
       y: number
@@ -114,9 +131,30 @@ interface FullCertificate {
       fontSize?: number
       fontFamily?: string
       fontWeight?: string
+      fontStyle?: string
       color?: string
       textAlign?: 'left' | 'center' | 'right'
       rotation?: number
+      opacity?: number
+      letterSpacing?: number
+      lineHeight?: number
+      textTransform?: 'none' | 'uppercase' | 'lowercase'
+      isBold?: boolean
+      isItalic?: boolean
+      isUnderline?: boolean
+      src?: string
+      imagePublicId?: string
+      richTextSegments?: Array<{
+        text: string
+        isBold?: boolean
+        isItalic?: boolean
+        isUnderline?: boolean
+        fontSize?: number
+        color?: string
+        fontFamily?: string
+        field?: string
+        textTransform?: string
+      }>
     }>
   }
   issuedAt: string
@@ -138,10 +176,10 @@ export default function VerifyPage() {
     try {
       const response = await fetch(`/api/verify/${certificateId}`)
       const result = await response.json()
+
       setData(result)
-  
+
       if (result.valid) {
-        // Fetch full certificate data for regeneration
         const certResponse = await fetch(`/api/certificates/verify/${certificateId}`)
         if (certResponse.ok) {
           const certData = await certResponse.json()
@@ -161,7 +199,6 @@ export default function VerifyPage() {
 
     setDownloading(true)
     try {
-      // Pre-process elements to generate QR Code Data URLs
       if (fullCertificate.templateConfig?.elements) {
         for (const el of fullCertificate.templateConfig.elements as any[]) {
           if (el.type === 'qrcode') {
@@ -173,7 +210,6 @@ export default function VerifyPage() {
 
       await prepareCertificateForPdf(fullCertificate)
 
-      // Generate PDF using @react-pdf/renderer
       const blob = await pdf(<CertificatePDF cert={fullCertificate} />).toBlob()
 
       const url = URL.createObjectURL(blob)
@@ -224,7 +260,7 @@ export default function VerifyPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className="max-w-5xl mx-auto space-y-8">
         {/* Verification Success */}
         <Card className="border-green-200">
           <CardContent className="pt-6">
@@ -239,6 +275,26 @@ export default function VerifyPage() {
                 <CardDescription className="text-green-700">
                   This certificate has been successfully verified and is authentic.
                 </CardDescription>
+                {cert.certificateType && (
+                  <div className="mt-2">
+                    <Badge
+                      variant={cert.certificateType === 'achievement' ? 'default' : 'secondary'}
+                      className="text-sm"
+                    >
+                      {cert.certificateType === 'achievement' ? (
+                        <>
+                          <Trophy className="h-3.5 w-3.5 mr-1.5" />
+                          Achievement Certificate
+                        </>
+                      ) : (
+                        <>
+                          <GraduationCap className="h-3.5 w-3.5 mr-1.5" />
+                          Participation Certificate
+                        </>
+                      )}
+                    </Badge>
+                  </div>
+                )}
               </div>
               <div className="flex gap-2">
                 <Button
@@ -259,7 +315,8 @@ export default function VerifyPage() {
         </Card>
 
         {/* Certificate Details */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Recipient Info */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
@@ -267,18 +324,35 @@ export default function VerifyPage() {
                 Recipient
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3">
               <div>
-                <p className="text-sm text-gray-500">Name</p>
-                <p className="text-lg font-semibold">{cert.participantName}</p>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Name</p>
+                <p className="text-base font-semibold">{cert.participantName}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Email</p>
-                <p className="text-gray-700">{cert.participantEmail}</p>
+                <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
+                  <Mail className="h-3 w-3" /> Email
+                </p>
+                <p className="text-sm text-gray-700">{cert.participantEmail}</p>
               </div>
+              {cert.collegeName && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
+                    <Building2 className="h-3 w-3" /> College
+                  </p>
+                  <p className="text-sm text-gray-700">{cert.collegeName}</p>
+                </div>
+              )}
+              {cert.registrationNumber && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Registration No.</p>
+                  <p className="text-sm font-mono text-gray-700">{cert.registrationNumber}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
+          {/* Event Info */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
@@ -286,14 +360,16 @@ export default function VerifyPage() {
                 Event Details
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3">
               <div>
-                <p className="text-sm text-gray-500">Event Name</p>
-                <p className="text-lg font-semibold">{cert.eventName}</p>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Event Name</p>
+                <p className="text-base font-semibold">{cert.eventName}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Event Date</p>
-                <p className="text-gray-700">
+                <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
+                  <Calendar className="h-3 w-3" /> Event Date
+                </p>
+                <p className="text-sm text-gray-700">
                   {new Date(cert.eventDate).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'long',
@@ -301,43 +377,55 @@ export default function VerifyPage() {
                   })}
                 </p>
               </div>
+              {cert.certificateType === 'achievement' && cert.position && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
+                    <Trophy className="h-3 w-3" /> Position
+                  </p>
+                  <p className="text-base font-semibold text-amber-600">{cert.position}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Certificate Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Certificate Info
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Certificate ID</p>
+                <p className="text-sm font-mono break-all">{cert.certificateId}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Organization</p>
+                <p className="text-sm font-semibold">{cert.organizationName || cert.organizationCode}</p>
+              </div>
+              {cert.location && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Location</p>
+                  <p className="text-sm text-gray-700">{cert.location}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Issued</p>
+                <p className="text-sm text-gray-700">
+                  {new Date(cert.issuedAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </p>
+              </div>
             </CardContent>
           </Card>
         </div>
-
-        {/* Certificate Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              Certificate Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-500">Certificate ID</p>
-                <p className="font-mono text-lg">{cert.certificateId}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Issuing Organization</p>
-                <p className="text-lg font-semibold">{cert.organizationCode}</p>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Issue Date</p>
-              <p className="text-gray-700">
-                {new Date(cert.issuedAt).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Certificate Preview */}
         {fullCertificate && (
@@ -353,8 +441,8 @@ export default function VerifyPage() {
                 <div
                   className="bg-white shadow-lg mx-auto"
                   style={{
-                    width: fullCertificate?.templateConfig?.width ?? 800,
-                    height: fullCertificate?.templateConfig?.height ?? 600,
+                    width: fullCertificate.templateConfig?.width ?? 800,
+                    height: fullCertificate.templateConfig?.height ?? 600,
                     position: 'relative',
                     overflow: 'hidden',
                   }}
@@ -381,6 +469,10 @@ export default function VerifyPage() {
                       participantName={fullCertificate.participantId.name}
                       eventName={fullCertificate.eventId.name}
                       eventDate={fullCertificate.eventId.date}
+                      collegeName={fullCertificate.participantId.collegeName}
+                      registrationNumber={fullCertificate.participantId.registrationNumber}
+                      position={fullCertificate.position}
+                      participantEmail={fullCertificate.participantId.email}
                     />
                   ))}
                 </div>
@@ -392,7 +484,7 @@ export default function VerifyPage() {
         {/* Footer */}
         <div className="text-center text-gray-500 text-sm">
           <p>Verified by Certify - Certificate Management System</p>
-          <p className="mt-1">
+          <p className="mt-1 text-xs">
             Verification URL: {typeof window !== 'undefined' && window.location.href}
           </p>
         </div>
@@ -401,19 +493,27 @@ export default function VerifyPage() {
   )
 }
 
-// Certificate Element Component
+// Certificate Element Component - Read-only rendering only
 function CertificateElement({
   element,
   certificateId,
   participantName,
   eventName,
   eventDate,
+  collegeName,
+  registrationNumber,
+  position,
+  participantEmail,
 }: {
   element: any
   certificateId: string
   participantName: string
   eventName: string
   eventDate: string
+  collegeName?: string
+  registrationNumber?: string
+  position?: string
+  participantEmail?: string
 }) {
   const qrRef = useRef<HTMLCanvasElement>(null)
 
@@ -436,27 +536,14 @@ function CertificateElement({
       })
     }
     if (element.field === 'certificateId') return certificateId
+    if (element.field === 'collegeName') return collegeName || ''
+    if (element.field === 'registrationNumber') return registrationNumber || ''
+    if (element.field === 'position') return position || ''
+    if (element.field === 'email') return participantEmail || ''
     return element.content || ''
   }
 
-  if (element.type === 'qrcode') {
-    return (
-      <canvas
-        ref={qrRef}
-        style={{
-          position: 'absolute',
-          left: element.x,
-          top: element.y,
-          width: element.width || 100,
-          height: element.height || 100,
-          transform: element.rotation ? `rotate(${element.rotation}deg)` : '',
-          transformOrigin: element.rotation ? 'center center' : undefined,
-          opacity: element.opacity !== undefined ? element.opacity : undefined,
-        }}
-      />
-    )
-  }
-
+  // Image element - read-only, no controls
   if (element.type === 'image') {
     const imgSrc = element.src || element.content
     if (!imgSrc) return null
@@ -480,42 +567,110 @@ function CertificateElement({
     )
   }
 
-  // Text element
-  let content = getContent()
-  if (element.textTransform === 'uppercase') content = content.toUpperCase()
-  else if (element.textTransform === 'lowercase') content = content.toLowerCase()
+  if (element.type === 'qrcode') {
+    return (
+      <canvas
+        ref={qrRef}
+        style={{
+          position: 'absolute',
+          left: element.x,
+          top: element.y,
+          width: element.width || 100,
+          height: element.height || 100,
+          transform: element.rotation ? `rotate(${element.rotation}deg)` : '',
+          transformOrigin: element.rotation ? 'center center' : undefined,
+          opacity: element.opacity !== undefined ? element.opacity : undefined,
+        }}
+      />
+    )
+  }
 
-  let fontWeight = element.fontWeight || 'normal'
-  let fontStyle = 'normal'
-  if (element.isBold) fontWeight = 'bold'
-  if (element.isItalic) fontStyle = 'italic'
+  // Text element - read-only rendering
+  if (element.type === 'text') {
+    // Rich text segments
+    if (element.richTextSegments && element.richTextSegments.length > 0) {
+      return (
+        <div
+          style={{
+            position: 'absolute',
+            left: element.x,
+            top: element.y,
+            width: element.width || 'auto',
+            height: element.height || 'auto',
+            transform: element.rotation ? `rotate(${element.rotation}deg)` : '',
+            transformOrigin: element.rotation ? 'center center' : undefined,
+            opacity: element.opacity !== undefined ? element.opacity : undefined,
+          }}
+        >
+          {element.richTextSegments.map((segment: any, idx: number) => {
+            let segText = segment.text || ''
+            if (segment.field === 'name') segText = participantName
+            else if (segment.field === 'event') segText = eventName
+            else if (segment.field === 'date') segText = new Date(eventDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+            else if (segment.field === 'certificateId') segText = certificateId
+            else if (segment.field === 'collegeName') segText = collegeName || ''
+            else if (segment.field === 'registrationNumber') segText = registrationNumber || ''
+            else if (segment.field === 'position') segText = position || ''
+            else if (segment.field === 'email') segText = participantEmail || ''
 
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        left: element.x,
-        top: element.y,
-        width: element.width || 'auto',
-        height: element.height || 'auto',
-        fontSize: `${element.fontSize || 24}px`,
-        fontFamily: element.fontFamily || 'Arial, sans-serif',
-        fontWeight,
-        fontStyle,
-        color: element.color || '#000000',
-        textAlign: element.textAlign || 'center',
-        lineHeight: String(element.lineHeight || 1.2),
-        letterSpacing: element.letterSpacing ? `${element.letterSpacing}px` : undefined,
-        textDecoration: element.isUnderline ? 'underline' : undefined,
-        transform: element.rotation ? `rotate(${element.rotation}deg)` : '',
-        transformOrigin: element.rotation ? 'center center' : undefined,
-        opacity: element.opacity !== undefined ? element.opacity : undefined,
-        whiteSpace: 'pre-wrap',
-        padding: 0,
-        margin: 0,
-      }}
-    >
-      {content}
-    </div>
-  )
+            if (segment.textTransform === 'uppercase') segText = segText.toUpperCase()
+            else if (segment.textTransform === 'lowercase') segText = segText.toLowerCase()
+
+            return (
+              <span
+                key={idx}
+                style={{
+                  fontSize: `${segment.fontSize || element.fontSize || 24}px`,
+                  fontFamily: segment.fontFamily || element.fontFamily || 'Arial, sans-serif',
+                  fontWeight: segment.isBold ? 'bold' : 'normal',
+                  fontStyle: segment.isItalic ? 'italic' : 'normal',
+                  color: segment.color || element.color || '#000000',
+                  textDecoration: segment.isUnderline ? 'underline' : 'none',
+                  letterSpacing: segment.letterSpacing ? `${segment.letterSpacing}px` : undefined,
+                }}
+              >
+                {segText}
+              </span>
+            )
+          })}
+        </div>
+      )
+    }
+
+    // Plain text
+    let content = getContent()
+    if (element.textTransform === 'uppercase') content = content.toUpperCase()
+    else if (element.textTransform === 'lowercase') content = content.toLowerCase()
+
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          left: element.x,
+          top: element.y,
+          width: element.width || 'auto',
+          height: element.height || 'auto',
+          fontSize: `${element.fontSize || 24}px`,
+          fontFamily: element.fontFamily || 'Arial, sans-serif',
+          fontWeight: element.isBold ? 'bold' : (element.fontWeight || 'normal'),
+          fontStyle: element.isItalic ? 'italic' : 'normal',
+          color: element.color || '#000000',
+          textAlign: element.textAlign || 'center',
+          lineHeight: String(element.lineHeight || 1.2),
+          letterSpacing: element.letterSpacing ? `${element.letterSpacing}px` : undefined,
+          textDecoration: element.isUnderline ? 'underline' : 'none',
+          transform: element.rotation ? `rotate(${element.rotation}deg)` : '',
+          transformOrigin: element.rotation ? 'center center' : undefined,
+          opacity: element.opacity !== undefined ? element.opacity : undefined,
+          whiteSpace: 'pre-wrap',
+          padding: 0,
+          margin: 0,
+        }}
+      >
+        {content}
+      </div>
+    )
+  }
+
+  return null
 }

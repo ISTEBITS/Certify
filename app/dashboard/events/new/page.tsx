@@ -19,6 +19,7 @@ export default function NewEventPage() {
     description: '',
     date: '',
     location: '',
+    organizationName:'',
     organizationCode: '',
     customSlug: '',
   })
@@ -67,7 +68,7 @@ export default function NewEventPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-5xl mx-auto p-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/dashboard/events">
@@ -157,6 +158,24 @@ export default function NewEventPage() {
                     className="pl-10"
                   />
                 </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="organizationName">
+                Organisation Name <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  id="organizationName"
+                  name="organizationName"
+                  placeholder="Indian Society for Technical Education"
+                  value={formData.organizationName}
+                  onChange={handleChange}
+                  className="pl-10"
+                  required
+                />
               </div>
             </div>
 

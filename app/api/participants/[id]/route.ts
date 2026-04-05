@@ -64,13 +64,15 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { name, email } = body
+    const { name, email, collegeName, registrationNumber } = body
 
     await connectDB()
 
     const updateData: any = {}
     if (name) updateData.name = name
     if (email) updateData.email = email
+    if (collegeName !== undefined) updateData.collegeName = collegeName
+    if (registrationNumber !== undefined) updateData.registrationNumber = registrationNumber
 
     const participant = await Participant.findByIdAndUpdate(
       id,
@@ -159,9 +161,12 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid participant ID' }, { status: 400 })
     }
 
+    const body = await request.json()
+    const { certificateType = 'participation', position } = body
+
     await connectDB()
 
-    const participant = await Participant.findById(id).populate('eventId')
+    const participant: any = await Participant.findById(id).populate('eventId')
     if (!participant) {
       return NextResponse.json({ error: 'Participant not found' }, { status: 404 })
     }
@@ -175,10 +180,16 @@ export async function PATCH(
 
     const event = participant.eventId as any
 
-    // Check if event has template config
-    if (!event.templateConfig) {
+    // Select the correct template based on certificate type
+    const templateConfig = certificateType === 'achievement'
+      ? event.achievementTemplate
+      : event.participationTemplate
+
+    // Check if event has the required template
+    if (!templateConfig) {
+      const templateName = certificateType === 'achievement' ? 'achievement' : 'participation'
       return NextResponse.json(
-        { error: 'Event does not have a certificate template. Please design one first.' },
+        { error: `No ${templateName} certificate template designed for this event. Please design one in the Certificate Designer.` },
         { status: 400 }
       )
     }
@@ -198,12 +209,17 @@ export async function PATCH(
       updatedEvent!.certificateCount
     )
 
+    // Deep clone templateConfig to avoid reference issues
+    const clonedTemplate = JSON.parse(JSON.stringify(templateConfig))
+
     // Create certificate record
     const certificate = await Certificate.create({
       certificateId,
       participantId: participant._id,
       eventId: event._id,
-      templateConfig: event.templateConfig,
+      certificateType,
+      position: certificateType === 'achievement' ? position : undefined,
+      templateConfig: clonedTemplate,
       issuedAt: new Date(),
     })
 
