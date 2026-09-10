@@ -228,7 +228,7 @@ export default function VerifyPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -346,7 +346,7 @@ export default function VerifyPage() {
               {cert.registrationNumber && (
                 <div>
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Registration No.</p>
-                  <p className="text-sm font-mono text-gray-700">{cert.registrationNumber}</p>
+                  <p className="text-sm text-gray-700">{cert.registrationNumber}</p>
                 </div>
               )}
             </CardContent>
@@ -399,7 +399,7 @@ export default function VerifyPage() {
             <CardContent className="space-y-3">
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Certificate ID</p>
-                <p className="text-sm font-mono break-all">{cert.certificateId}</p>
+                <p className="text-sm break-all">{cert.certificateId}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Organization</p>
@@ -430,53 +430,14 @@ export default function VerifyPage() {
         {/* Certificate Preview */}
         {fullCertificate && (
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
                 <FileText className="h-5 w-5" />
                 Certificate Preview
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="overflow-auto bg-gray-100 rounded-lg p-4">
-                <div
-                  className="bg-white shadow-lg mx-auto"
-                  style={{
-                    width: fullCertificate.templateConfig?.width ?? 800,
-                    height: fullCertificate.templateConfig?.height ?? 600,
-                    position: 'relative',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {/* Background */}
-                  {fullCertificate.templateConfig.backgroundImage && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        backgroundImage: `url(${fullCertificate.templateConfig.backgroundImage})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                      }}
-                    />
-                  )}
-
-                  {/* Elements */}
-                  {fullCertificate.templateConfig.elements.map((element) => (
-                    <CertificateElement
-                      key={element.id}
-                      element={element}
-                      certificateId={fullCertificate.certificateId}
-                      participantName={fullCertificate.participantId.name}
-                      eventName={fullCertificate.eventId.name}
-                      eventDate={fullCertificate.eventId.date}
-                      collegeName={fullCertificate.participantId.collegeName}
-                      registrationNumber={fullCertificate.participantId.registrationNumber}
-                      position={fullCertificate.position}
-                      participantEmail={fullCertificate.participantId.email}
-                    />
-                  ))}
-                </div>
-              </div>
+            <CardContent className="p-2 sm:p-6">
+              <ResponsiveCertificatePreview fullCertificate={fullCertificate} />
             </CardContent>
           </Card>
         )}
@@ -487,6 +448,84 @@ export default function VerifyPage() {
           <p className="mt-1 text-xs">
             Verification URL: {typeof window !== 'undefined' && window.location.href}
           </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Responsive Certificate Preview Component for mobile and desktop
+function ResponsiveCertificatePreview({ fullCertificate }: { fullCertificate: any }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
+
+  const tplWidth = fullCertificate.templateConfig?.width ?? 842
+  const tplHeight = fullCertificate.templateConfig?.height ?? 595
+
+  useEffect(() => {
+    const updateScale = () => {
+      if (!containerRef.current) return
+      const containerWidth = containerRef.current.clientWidth
+      if (containerWidth > 0 && containerWidth < tplWidth) {
+        setScale(containerWidth / tplWidth)
+      } else {
+        setScale(1)
+      }
+    }
+
+    updateScale()
+    window.addEventListener('resize', updateScale)
+    return () => window.removeEventListener('resize', updateScale)
+  }, [tplWidth])
+
+  return (
+    <div ref={containerRef} className="w-full flex justify-center overflow-hidden bg-muted/40 rounded-lg p-2 sm:p-4">
+      <div
+        style={{
+          width: tplWidth * scale,
+          height: tplHeight * scale,
+          position: 'relative',
+        }}
+        className="transition-all duration-150 flex-shrink-0"
+      >
+        <div
+          className="bg-white shadow-lg origin-top-left"
+          style={{
+            width: tplWidth,
+            height: tplHeight,
+            transform: `scale(${scale})`,
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Background */}
+          {fullCertificate.templateConfig?.backgroundImage && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                backgroundImage: `url(${fullCertificate.templateConfig.backgroundImage})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }}
+            />
+          )}
+
+          {/* Elements */}
+          {fullCertificate.templateConfig?.elements?.map((element: any) => (
+            <CertificateElement
+              key={element.id}
+              element={element}
+              certificateId={fullCertificate.certificateId}
+              participantName={fullCertificate.participantId?.name}
+              eventName={fullCertificate.eventId?.name}
+              eventDate={fullCertificate.eventId?.date}
+              collegeName={fullCertificate.participantId?.collegeName}
+              registrationNumber={fullCertificate.participantId?.registrationNumber}
+              position={fullCertificate.position}
+              participantEmail={fullCertificate.participantId?.email}
+            />
+          ))}
         </div>
       </div>
     </div>

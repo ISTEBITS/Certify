@@ -1,6 +1,6 @@
 {
-  "name": "certify-certificate-management",
-  "version": "1.0.0",
+  "name": "iste-certificate-management",
+  "version": "2.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",

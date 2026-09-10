@@ -39,6 +39,8 @@ export interface ICertificate extends Document {
     }>
   }
   issuedAt: Date
+  emailSent: boolean
+  emailSentAt?: Date
   createdAt: Date
   updatedAt: Date
 }
@@ -104,6 +106,13 @@ const CertificateSchema = new Schema<ICertificate>(
     issuedAt: {
       type: Date,
       default: Date.now,
+    },
+    emailSent: {
+      type: Boolean,
+      default: false,
+    },
+    emailSentAt: {
+      type: Date,
     },
   },
   {

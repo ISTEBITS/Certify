@@ -19,7 +19,7 @@ export default function NewEventPage() {
     description: '',
     date: '',
     location: '',
-    organizationName:'',
+    organizationName: '',
     organizationCode: '',
     customSlug: '',
   })
@@ -52,7 +52,6 @@ export default function NewEventPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     
-    // Auto-format slug to uppercase and remove non-alphanumeric characters
     if (name === 'customSlug') {
       const formatted = value.toUpperCase().replace(/[^A-Z0-9]/g, '')
       setFormData({
@@ -68,71 +67,65 @@ export default function NewEventPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto p-6">
+    <div className="space-y-6 p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 bg-card p-5 rounded-lg border border-border shadow-sm">
         <Link href="/dashboard/events">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+            <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Create Event</h1>
-          <p className="text-gray-500 mt-1">Set up a new event for certificate generation</p>
+          <h1 className="text-2xl font-semibold text-foreground">Create Event</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Set up a new event for automated certificate generation.</p>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Event Details</CardTitle>
-          <CardDescription>
-            Fill in the details below to create your event. An auto-generated event code will be created.
+      <Card className="border-border shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base font-semibold text-foreground">Event Details</CardTitle>
+          <CardDescription className="text-xs text-muted-foreground">
+            Fill in the details below. An auto-generated event code will be created for certificates.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
               <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription className="text-xs">{error}</AlertDescription>
               </Alert>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="name">
+            <div className="space-y-1.5">
+              <Label htmlFor="name" className="text-xs">
                 Event Name <span className="text-red-500">*</span>
               </Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  id="name"
-                  name="name"
-                  placeholder="e.g., Annual Tech Conference 2025"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="pl-10"
-                  required
-                />
-              </div>
+              <Input
+                id="name"
+                name="name"
+                placeholder="e.g., Annual Tech Conference 2026"
+                value={formData.name}
+                onChange={handleChange}
+                className="h-9 text-sm"
+                required
+              />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <div className="relative">
-                <FileText className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  id="description"
-                  name="description"
-                  placeholder="Brief description of the event"
-                  value={formData.description}
-                  onChange={handleChange}
-                  className="pl-10"
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="description" className="text-xs">Description</Label>
+              <Input
+                id="description"
+                name="description"
+                placeholder="Brief description of the event"
+                value={formData.description}
+                onChange={handleChange}
+                className="h-9 text-sm"
+              />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="date">
+              <div className="space-y-1.5">
+                <Label htmlFor="date" className="text-xs">
                   Event Date <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -141,107 +134,87 @@ export default function NewEventPage() {
                   type="date"
                   value={formData.date}
                   onChange={handleChange}
+                  className="h-9 text-sm"
                   required
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="location"
-                    name="location"
-                    placeholder="e.g., New York, NY"
-                    value={formData.location}
-                    onChange={handleChange}
-                    className="pl-10"
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="location" className="text-xs">Location</Label>
+                <Input
+                  id="location"
+                  name="location"
+                  placeholder="e.g., Campus Auditorium"
+                  value={formData.location}
+                  onChange={handleChange}
+                  className="h-9 text-sm"
+                />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="organizationName">
+            <div className="space-y-1.5">
+              <Label htmlFor="organizationName" className="text-xs">
                 Organisation Name <span className="text-red-500">*</span>
               </Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  id="organizationName"
-                  name="organizationName"
-                  placeholder="Indian Society for Technical Education"
-                  value={formData.organizationName}
-                  onChange={handleChange}
-                  className="pl-10"
-                  required
-                />
-              </div>
+              <Input
+                id="organizationName"
+                name="organizationName"
+                placeholder="e.g., Indian Society for Technical Education"
+                value={formData.organizationName}
+                onChange={handleChange}
+                className="h-9 text-sm"
+                required
+              />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="organizationCode">
+            <div className="space-y-1.5">
+              <Label htmlFor="organizationCode" className="text-xs">
                 Organization Code <span className="text-red-500">*</span>
               </Label>
-              <div className="relative">
-                <Building2 className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  id="organizationCode"
-                  name="organizationCode"
-                  placeholder="e.g., ACME (3-5 characters)"
-                  value={formData.organizationCode}
-                  onChange={handleChange}
-                  className="pl-10"
-                  maxLength={5}
-                  required
-                />
-              </div>
-              <p className="text-sm text-gray-500">
-                This code will be used in certificate IDs (e.g., ACME-EVENT-2025-000001-A1B2)
+              <Input
+                id="organizationCode"
+                name="organizationCode"
+                placeholder="e.g., ISTE (3-5 characters)"
+                value={formData.organizationCode}
+                onChange={handleChange}
+                className="h-9 text-sm"
+                maxLength={5}
+                required
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Prefix used in certificate IDs (e.g., ISTE-EVENT-2026-000001)
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="customSlug">
-                Custom Slug <span className="text-xs text-gray-500 font-normal">(optional)</span>
+            <div className="space-y-1.5">
+              <Label htmlFor="customSlug" className="text-xs">
+                Custom Slug <span className="text-muted-foreground font-normal">(optional)</span>
               </Label>
-              <div className="relative">
-                <Input
-                  id="customSlug"
-                  name="customSlug"
-                  placeholder="e.g., TECH25 (2-6 characters)"
-                  value={formData.customSlug}
-                  onChange={handleChange}
-                  className="uppercase"
-                  maxLength={6}
-                />
-              </div>
-              <p className="text-sm text-gray-500">
-                Custom identifier for this event (2-6 alphanumeric characters). Auto-generated from event name if not provided.
+              <Input
+                id="customSlug"
+                name="customSlug"
+                placeholder="e.g., TECH26 (2-6 characters)"
+                value={formData.customSlug}
+                onChange={handleChange}
+                className="h-9 text-sm uppercase"
+                maxLength={6}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Short identifier for URLs (2-6 uppercase alphanumeric characters).
               </p>
-              {formData.customSlug && formData.customSlug.length > 0 && formData.customSlug.length < 2 && (
-                <p className="text-sm text-amber-600">
-                  ⚠️ Slug must be at least 2 characters
-                </p>
-              )}
-              {formData.customSlug && formData.customSlug.length >= 2 && formData.customSlug.length <= 6 && (
-                <p className="text-sm text-green-600">
-                  ✓ Valid slug
-                </p>
-              )}
             </div>
 
-            <div className="flex gap-4 pt-4">
+            <div className="flex gap-3 pt-2">
               <Link href="/dashboard/events" className="flex-1">
-                <Button type="button" variant="outline" className="w-full">
+                <Button type="button" variant="outline" className="w-full text-xs h-9">
                   Cancel
                 </Button>
               </Link>
-              <Button type="submit" className="flex-1" disabled={loading}>
+              <Button type="submit" className="flex-1 text-xs h-9" disabled={loading}>
                 {loading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                    Creating Event...
                   </>
                 ) : (
                   'Create Event'

@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { base64Data, folder } = body
+    const { base64Data, folder, name } = body
 
     if (!base64Data) {
       return NextResponse.json(
@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
       publicId: result.public_id,
       width: result.width,
       height: result.height,
+      name: name || result.original_filename || 'Untitled',
       configured: true,
     })
   } catch (error: any) {
