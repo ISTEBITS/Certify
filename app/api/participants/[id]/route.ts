@@ -124,7 +124,7 @@ export async function DELETE(
     // Delete associated certificate if exists
     if (participant.certificateId) {
       await Certificate.deleteOne({ certificateId: participant.certificateId })
-      
+
       // Decrement event certificate count
       await Event.findByIdAndUpdate(participant.eventId, {
         $inc: { certificateCount: -1 },
@@ -180,13 +180,28 @@ export async function PATCH(
 
     const event = participant.eventId as any
 
-    // Select the correct template based on certificate type
-    const templateConfig = certificateType === 'achievement'
+   
+    let templateConfig = certificateType === 'achievement'
       ? event.achievementTemplate
       : event.participationTemplate
 
+    const hasSpecificDesign = templateConfig && (
+      (Array.isArray(templateConfig.elements) && templateConfig.elements.length > 0) ||
+      Boolean(templateConfig.backgroundImage)
+    )
+
+    // If achievementTemplate hasn't been independently customized, fallback to participationTemplate
+    if (certificateType === 'achievement' && !hasSpecificDesign) {
+      if (event.participationTemplate && (
+        (Array.isArray(event.participationTemplate.elements) && event.participationTemplate.elements.length > 0) ||
+        Boolean(event.participationTemplate.backgroundImage)
+      )) {
+        templateConfig = event.participationTemplate
+      }
+    }
+
     // Check if event has the required template
-    if (!templateConfig) {
+    if (!templateConfig || (!templateConfig.elements?.length && !templateConfig.backgroundImage)) {
       const templateName = certificateType === 'achievement' ? 'achievement' : 'participation'
       return NextResponse.json(
         { error: `No ${templateName} certificate template designed for this event. Please design one in the Certificate Designer.` },

@@ -162,9 +162,14 @@ export default function CertificateDesignerPage() {
     if (!ev) return
 
     const tpl = templateType === 'achievement' ? ev.achievementTemplate : ev.participationTemplate
-    if (tpl && tpl.elements) {
+    if (tpl && ((Array.isArray(tpl.elements) && tpl.elements.length > 0) || tpl.backgroundImage)) {
       setTemplate(tpl)
       setHistory([tpl])
+      setHistoryIndex(0)
+    } else if (templateType === 'achievement' && ev.participationTemplate && ((Array.isArray(ev.participationTemplate.elements) && ev.participationTemplate.elements.length > 0) || ev.participationTemplate.backgroundImage)) {
+      const inherited = JSON.parse(JSON.stringify(ev.participationTemplate))
+      setTemplate(inherited)
+      setHistory([inherited])
       setHistoryIndex(0)
     } else {
       const emptyTpl: TemplateConfig = {
@@ -530,6 +535,11 @@ export default function CertificateDesignerPage() {
 
       if (res.ok) {
         setSaveStatus('saved')
+        setEvents((prev) =>
+          prev.map((e) =>
+            e._id === selectedEvent ? { ...e, [payloadKey]: template } : e
+          )
+        )
         toast({
           title: 'Template Saved Successfully',
           description: `${templateType === 'achievement' ? 'Achievement' : 'Participation'} certificate design updated.`,

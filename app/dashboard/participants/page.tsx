@@ -41,6 +41,9 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+import { useToast } from '@/components/ui/use-toast'
+import { Toaster } from '@/components/ui/toaster'
 import {
   Users,
   Plus,
@@ -56,6 +59,7 @@ import {
   Trophy,
   Building2,
   Eye,
+  AlertCircle,
 } from 'lucide-react'
 import Papa from 'papaparse'
 
@@ -108,6 +112,12 @@ export default function ParticipantsPage() {
   const [certificateType, setCertificateType] = useState<'participation' | 'achievement'>('participation')
   const [position, setPosition] = useState('')
   const [issuing, setIssuing] = useState(false)
+
+  const { toast } = useToast()
+  const [addError, setAddError] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
+  const [csvError, setCsvError] = useState<string | null>(null)
+  const [issueError, setIssueError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchEvents()
@@ -163,6 +173,13 @@ export default function ParticipantsPage() {
   }
 
   const handleAddParticipant = async () => {
+    setAddError(null)
+    if (!newParticipant.name || !newParticipant.email || !newParticipant.eventId) {
+      setAddError('Please provide all required fields (Event, Full Name, Email).')
+      return
+    }
+
+    setAdding(true)
     try {
       const response = await fetch('/api/participants', {
         method: 'POST',
@@ -170,16 +187,23 @@ export default function ParticipantsPage() {
         body: JSON.stringify(newParticipant),
       })
 
+      const data = await response.json()
+
       if (response.ok) {
         setShowAddDialog(false)
         setNewParticipant({ name: '', email: '', eventId: '', collegeName: '', registrationNumber: '' })
+        setAddError(null)
         fetchParticipants()
       } else {
-        const error = await response.json()
-        alert(error.error || 'Failed to add participant')
+        const errorMsg = data.error || 'Failed to add participant'
+        setAddError(errorMsg)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding participant:', error)
+      const errorMsg = error.message || 'An unexpected error occurred while adding participant'
+      setAddError(errorMsg)
+    } finally {
+      setAdding(false)
     }
   }
 
@@ -202,6 +226,7 @@ export default function ParticipantsPage() {
     if (!csvFile || !newParticipant.eventId) return
 
     setUploading(true)
+    setCsvError(null)
     Papa.parse(csvFile, {
       header: true,
       skipEmptyLines: true,
@@ -216,15 +241,37 @@ export default function ParticipantsPage() {
             }),
           })
 
+          const data = await response.json()
+
           if (response.ok) {
             setShowCSVDialog(false)
             setCsvFile(null)
             setCsvPreview([])
+            setCsvError(null)
             setNewParticipant({ name: '', email: '', eventId: '', collegeName: '', registrationNumber: '' })
+            toast({
+              title: 'CSV Import Successful',
+              description: `Imported ${results.data.length} participants into the event.`,
+            })
             fetchParticipants()
+          } else {
+            const errorMsg = data.error || 'Failed to import CSV'
+            setCsvError(errorMsg)
+            toast({
+              title: 'CSV Import Failed',
+              description: errorMsg,
+              variant: 'destructive',
+            })
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('Error uploading CSV:', error)
+          const errorMsg = error.message || 'Error processing CSV upload'
+          setCsvError(errorMsg)
+          toast({
+            title: 'Upload Error',
+            description: errorMsg,
+            variant: 'destructive',
+          })
         } finally {
           setUploading(false)
         }
@@ -236,6 +283,7 @@ export default function ParticipantsPage() {
     setIssueParticipant(participant)
     setCertificateType('participation')
     setPosition('')
+    setIssueError(null)
     setIssueDialogOpen(true)
   }
 
@@ -243,6 +291,7 @@ export default function ParticipantsPage() {
     if (!issueParticipant) return
 
     setIssuing(true)
+    setIssueError(null)
     try {
       const body: any = { certificateType }
       if (certificateType === 'achievement' && position.trim()) {
@@ -255,16 +304,35 @@ export default function ParticipantsPage() {
         body: JSON.stringify(body),
       })
 
+      const data = await response.json()
+
       if (response.ok) {
         setIssueDialogOpen(false)
         setIssueParticipant(null)
+        setIssueError(null)
+        toast({
+          title: 'Certificate Issued',
+          description: `Certificate ${data.certificateId || ''} successfully issued to ${issueParticipant.name}.`,
+        })
         fetchParticipants()
       } else {
-        const error = await response.json()
-        alert(error.error || 'Failed to issue certificate')
+        const errorMsg = data.error || 'Failed to issue certificate'
+        setIssueError(errorMsg)
+        toast({
+          title: 'Issue Failed',
+          description: errorMsg,
+          variant: 'destructive',
+        })
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error issuing certificate:', error)
+      const errorMsg = error.message || 'An unexpected error occurred while issuing certificate'
+      setIssueError(errorMsg)
+      toast({
+        title: 'Error',
+        description: errorMsg,
+        variant: 'destructive',
+      })
     } finally {
       setIssuing(false)
     }
@@ -277,10 +345,26 @@ export default function ParticipantsPage() {
         method: 'DELETE',
       })
       if (response.ok) {
-        setParticipants(participants.filter((p) => p._id !== id))
+        setParticipants((prev) => prev.filter((p) => p._id !== id))
+        toast({
+          title: 'Participant Deleted',
+          description: 'The participant record has been removed.',
+        })
+      } else {
+        const data = await response.json()
+        toast({
+          title: 'Delete Failed',
+          description: data.error || 'Failed to delete participant',
+          variant: 'destructive',
+        })
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting participant:', error)
+      toast({
+        title: 'Delete Error',
+        description: error.message || 'Failed to delete participant',
+        variant: 'destructive',
+      })
     } finally {
       setDeletingId(null)
     }
@@ -337,6 +421,17 @@ export default function ParticipantsPage() {
                   Upload a CSV file containing name, email, collegeName, and registrationNumber.
                 </DialogDescription>
               </DialogHeader>
+
+              {csvError && (
+                <Alert variant="destructive" className="py-2.5 px-3 text-xs">
+                  <AlertCircle className="h-4 w-4" />
+                  <div className="ml-2">
+                    <AlertTitle className="text-xs font-semibold">Import Error</AlertTitle>
+                    <AlertDescription className="text-xs">{csvError}</AlertDescription>
+                  </div>
+                </Alert>
+              )}
+
               <div className="space-y-4 py-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Select Event</Label>
@@ -426,9 +521,9 @@ export default function ParticipantsPage() {
           </Dialog>
 
           {/* Add Single Participant Dialog */}
-          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+          <Dialog open={showAddDialog} onOpenChange={(open) => { setShowAddDialog(open); if (!open) setAddError(null); }}>
             <DialogTrigger asChild>
-              <Button size="sm" className="h-8 text-xs gap-1.5">
+              <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setAddError(null)}>
                 <Plus className="h-3.5 w-3.5" />
                 Add Participant
               </Button>
@@ -440,14 +535,26 @@ export default function ParticipantsPage() {
                   Enter participant information below.
                 </DialogDescription>
               </DialogHeader>
+
+              {addError && (
+                <Alert variant="destructive" className="py-2.5 px-3 text-xs">
+                  <AlertCircle className="h-4 w-4" />
+                  <div className="ml-2">
+                    <AlertTitle className="text-xs font-semibold">Registration Error</AlertTitle>
+                    <AlertDescription className="text-xs">{addError}</AlertDescription>
+                  </div>
+                </Alert>
+              )}
+
               <div className="space-y-3 py-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="event" className="text-xs">Event *</Label>
                   <Select
                     value={newParticipant.eventId}
-                    onValueChange={(value) =>
+                    onValueChange={(value) => {
                       setNewParticipant({ ...newParticipant, eventId: value })
-                    }
+                      if (addError) setAddError(null)
+                    }}
                   >
                     <SelectTrigger className="h-9 text-xs">
                       <SelectValue placeholder="Select an event" />
@@ -466,9 +573,10 @@ export default function ParticipantsPage() {
                   <Input
                     id="name"
                     value={newParticipant.name}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setNewParticipant({ ...newParticipant, name: e.target.value })
-                    }
+                      if (addError) setAddError(null)
+                    }}
                     placeholder="e.g., Alex Morgan"
                     className="h-9 text-xs"
                   />
@@ -479,9 +587,10 @@ export default function ParticipantsPage() {
                     id="email"
                     type="email"
                     value={newParticipant.email}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setNewParticipant({ ...newParticipant, email: e.target.value })
-                    }
+                      if (addError) setAddError(null)
+                    }}
                     placeholder="alex@domain.com"
                     className="h-9 text-xs"
                   />
@@ -699,6 +808,16 @@ export default function ParticipantsPage() {
             </DialogDescription>
           </DialogHeader>
 
+          {issueError && (
+            <Alert variant="destructive" className="py-2.5 px-3 text-xs">
+              <AlertCircle className="h-4 w-4" />
+              <div className="ml-2">
+                <AlertTitle className="text-xs font-semibold">Cannot Issue Certificate</AlertTitle>
+                <AlertDescription className="text-xs">{issueError}</AlertDescription>
+              </div>
+            </Alert>
+          )}
+
           {issueParticipant && (
             <div className="space-y-4 py-2">
               <Tabs value={certificateType} onValueChange={(v) => setCertificateType(v as 'participation' | 'achievement')}>
@@ -737,6 +856,8 @@ export default function ParticipantsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Toaster />
     </div>
   )
 }
