@@ -9,6 +9,8 @@ export interface IParticipant extends Document {
   certificateId?: string
   certificateIssued: boolean
   certificateIssuedAt?: Date
+  emailSent: boolean
+  emailSentAt?: Date
   createdAt: Date
   updatedAt: Date
 }
@@ -51,6 +53,13 @@ const ParticipantSchema = new Schema<IParticipant>(
     certificateIssuedAt: {
       type: Date,
     },
+    emailSent: {
+      type: Boolean,
+      default: false,
+    },
+    emailSentAt: {
+      type: Date,
+    },
   },
   {
     timestamps: true,
@@ -59,7 +68,7 @@ const ParticipantSchema = new Schema<IParticipant>(
 
 // Index for faster queries
 ParticipantSchema.index({ eventId: 1 })
-ParticipantSchema.index({ certificateId: 1 })
 ParticipantSchema.index({ email: 1, eventId: 1 }, { unique: true })
+ParticipantSchema.index({ eventId: 1, emailSent: 1 })
 
 export default mongoose.models.Participant || mongoose.model<IParticipant>('Participant', ParticipantSchema)

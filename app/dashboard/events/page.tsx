@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -103,25 +104,31 @@ export default function EventsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="flex flex-col items-center justify-center h-80 gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Loading events...</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-card p-5 rounded-lg border border-border shadow-sm">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Events</h1>
-          <p className="text-gray-500 mt-1">
-            Manage your events and certificate configurations
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold text-foreground">Events</h1>
+            <Badge variant="secondary" className="text-xs font-normal">
+              {filteredEvents.length} Total
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage your events and configure certificate templates.
           </p>
         </div>
         <Link href="/dashboard/events/new">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
+          <Button size="sm" className="gap-1.5 text-xs">
+            <Plus className="h-4 w-4" />
             New Event
           </Button>
         </Link>
@@ -129,97 +136,89 @@ export default function EventsPage() {
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search events by name, code, or organization..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
+          className="pl-9 h-9 text-sm bg-card border-border"
         />
       </div>
 
       {/* Events Grid */}
       {filteredEvents.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredEvents.map((event) => (
-            <Card key={event._id} className="hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-4">
-                <div className="flex items-start justify-between">
+            <Card key={event._id} className="border-border shadow-sm hover:border-primary/40 transition-all flex flex-col justify-between">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <CardTitle className="text-lg truncate">{event.name}</CardTitle>
-                    <CardDescription className="mt-1">
-                      Code: <span className="font-mono">{event.code}</span>
-                    </CardDescription>
-                    <CardDescription className="mt-0.5">
-                      Slug: <span className="font-mono">{event.slug}</span>
-                    </CardDescription>
+                    <CardTitle className="text-base font-semibold text-foreground truncate">{event.name}</CardTitle>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="outline" className="text-[11px] font-normal">
+                        Code: {event.code}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">Org: {event.organizationCode}</span>
+                    </div>
                   </div>
-                  <div className="bg-primary/10 p-2 rounded-lg flex-shrink-0">
-                    <Award className="h-5 w-5 text-primary" />
+                  <div className="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
+                    <Award className="h-4 w-4" />
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Calendar className="h-4 w-4" />
+              <CardContent className="space-y-4 pt-0">
+                <div className="space-y-1.5 text-xs text-muted-foreground border-t border-border/60 pt-3">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-3.5 w-3.5" />
                     <span>
                       {new Date(event.date).toLocaleDateString('en-US', {
                         year: 'numeric',
-                        month: 'long',
+                        month: 'short',
                         day: 'numeric',
                       })}
                     </span>
                   </div>
                   {event.location && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <MapPin className="h-4 w-4" />
-                      <span>{event.location}</span>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-3.5 w-3.5" />
+                      <span className="truncate">{event.location}</span>
                     </div>
                   )}
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Users className="h-4 w-4" />
-                    <span>Org: {event.organizationCode}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <FileText className="h-4 w-4" />
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-3.5 w-3.5" />
                     <span>{event.certificateCount} certificates issued</span>
                   </div>
                 </div>
 
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-2 pt-1 border-t border-border/60">
                   <Link href={`/dashboard/events/${event._id}`} className="flex-1">
-                    <Button variant="outline" className="w-full">
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
+                    <Button variant="outline" size="sm" className="w-full text-xs h-8">
+                      <Edit className="h-3.5 w-3.5 mr-1.5" />
+                      Manage
                     </Button>
                   </Link>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="icon" className="text-red-600 hover:text-red-700">
-                        <Trash2 className="h-4 w-4" />
+                      <Button variant="outline" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50">
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Event</AlertDialogTitle>
-                        <AlertDialogDescription>
+                        <AlertDialogTitle className="text-base font-semibold">Delete Event?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-xs text-muted-foreground">
                           Are you sure you want to delete &quot;{event.name}&quot;? This action cannot be undone.
-                          All associated participants and certificates will also be affected.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
                         <AlertDialogAction
                           onClick={() => deleteEvent(event._id)}
-                          className="bg-red-600 hover:bg-red-700"
+                          className="bg-red-600 hover:bg-red-700 text-white h-8 text-xs gap-1.5"
                           disabled={deletingId === event._id}
                         >
-                          {deletingId === event._id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            'Delete'
-                          )}
+                          {deletingId === event._id && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                          Delete
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -230,21 +229,21 @@ export default function EventsPage() {
           ))}
         </div>
       ) : (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Award className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {searchQuery ? 'No events found' : 'No events yet'}
+        <Card className="border-border shadow-sm">
+          <CardContent className="py-12 text-center text-muted-foreground">
+            <Award className="h-10 w-10 text-muted-foreground mx-auto mb-2 opacity-40" />
+            <h3 className="text-sm font-medium text-foreground mb-1">
+              {searchQuery ? 'No events found' : 'No events created yet'}
             </h3>
-            <p className="text-gray-500 mb-4">
+            <p className="text-xs max-w-sm mx-auto mb-4">
               {searchQuery
-                ? 'Try adjusting your search query'
-                : 'Create your first event to get started'}
+                ? 'Try adjusting your search criteria.'
+                : 'Create your first event to configure certificates.'}
             </p>
             {!searchQuery && (
               <Link href="/dashboard/events/new">
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
+                <Button size="sm" className="text-xs gap-1.5">
+                  <Plus className="h-3.5 w-3.5" />
                   Create Event
                 </Button>
               </Link>

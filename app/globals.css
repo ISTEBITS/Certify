@@ -58,28 +58,60 @@
   }
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+* {
+  -ms-overflow-style: none !important; /* IE and Edge */
+  scrollbar-width: none !important; /* Firefox */
 }
 
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0px !important;
+  height: 0px !important;
 }
 
-::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 4px;
+/* Explicit scrollbar utility for containers requiring visible scrollbars (e.g. Designer Canvas) */
+.show-scrollbar {
+  -ms-overflow-style: auto !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: hsl(var(--primary) / 0.9) hsl(var(--primary-foreground) / 0.5) !important;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
+.show-scrollbar::-webkit-scrollbar {
+  display: block !important;
+  width: 8px !important;
+  height: 8px !important;
+}
+
+.show-scrollbar::-webkit-scrollbar-track {
+  background: hsl(var(--muted) / 0.5) !important;
+  border-radius: 4px !important;
+}
+
+.show-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.35) !important;
+  border-radius: 4px !important;
+}
+
+.show-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.55) !important;
 }
 
 /* Certificate canvas styles */
 .certificate-canvas {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.8s infinite cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Print styles for certificates */

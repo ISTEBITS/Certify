@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -51,12 +51,10 @@ import {
   Mail,
   Loader2,
   CheckCircle,
-  FileText,
   Download,
   GraduationCap,
   Trophy,
   Building2,
-  Hash,
   Eye,
 } from 'lucide-react'
 import Papa from 'papaparse'
@@ -120,7 +118,7 @@ export default function ParticipantsPage() {
     let filtered = participants
 
     if (selectedEvent !== 'all') {
-      filtered = filtered.filter((p) => p.eventId._id === selectedEvent)
+      filtered = filtered.filter((p) => p.eventId?._id === selectedEvent)
     }
 
     if (searchQuery.trim() !== '') {
@@ -267,7 +265,6 @@ export default function ParticipantsPage() {
       }
     } catch (error) {
       console.error('Error issuing certificate:', error)
-      alert('Failed to issue certificate')
     } finally {
       setIssuing(false)
     }
@@ -290,7 +287,7 @@ export default function ParticipantsPage() {
   }
 
   const downloadSampleCSV = () => {
-    const csv = 'name,email,collegeName,registrationNumber\nJohn Doe,john@example.com,University of Technology,REG-2025-001\nJane Smith,jane@example.com,State College,REG-2025-002'
+    const csv = 'name,email,collegeName,registrationNumber\nJohn Doe,john@example.com,University of Technology,REG-2026-001\nJane Smith,jane@example.com,State College,REG-2026-002'
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -302,47 +299,54 @@ export default function ParticipantsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="flex flex-col items-center justify-center h-80 gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Loading participants...</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-card p-5 rounded-lg border border-border shadow-sm">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Participants</h1>
-          <p className="text-gray-500 mt-1">
-            Manage participants and issue certificates
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold text-foreground">Participants</h1>
+            <Badge variant="secondary" className="text-xs font-normal">
+              {filteredParticipants.length} Total
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage candidates, import rosters via CSV, and issue official certificates.
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2">
+          {/* CSV Dialog */}
           <Dialog open={showCSVDialog} onOpenChange={setShowCSVDialog}>
             <DialogTrigger asChild>
-              <Button variant="outline">
-                <Upload className="h-4 w-4 mr-2" />
+              <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                <Upload className="h-3.5 w-3.5" />
                 Import CSV
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
-                <DialogTitle>Import Participants from CSV</DialogTitle>
-                <DialogDescription>
-                  Upload a CSV file with name, email, and optional collegeName, registrationNumber columns
+                <DialogTitle className="text-base font-semibold">Import Participants from CSV</DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  Upload a CSV file containing name, email, collegeName, and registrationNumber.
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Select Event</Label>
+              <div className="space-y-4 py-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Select Event</Label>
                   <Select
                     value={newParticipant.eventId}
                     onValueChange={(value) =>
                       setNewParticipant({ ...newParticipant, eventId: value })
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 text-xs">
                       <SelectValue placeholder="Select an event" />
                     </SelectTrigger>
                     <SelectContent>
@@ -354,20 +358,21 @@ export default function ParticipantsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>CSV File</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">CSV File</Label>
                   <Input
                     type="file"
                     accept=".csv"
                     onChange={handleCSVUpload}
+                    className="text-xs h-9"
                   />
                 </div>
                 {csvPreview.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>Preview (first 5 rows)</Label>
-                    <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-sm">
-                        <thead className="bg-gray-50">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Preview (first 5 rows)</Label>
+                    <div className="border border-border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs">
+                        <thead className="bg-muted/50">
                           <tr>
                             <th className="px-3 py-2 text-left">Name</th>
                             <th className="px-3 py-2 text-left">Email</th>
@@ -375,13 +380,13 @@ export default function ParticipantsPage() {
                             <th className="px-3 py-2 text-left">Reg. No.</th>
                           </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y divide-border">
                           {csvPreview.map((row, i) => (
-                            <tr key={i} className="border-t">
-                              <td className="px-3 py-2">{row.name}</td>
-                              <td className="px-3 py-2">{row.email}</td>
-                              <td className="px-3 py-2">{row.collegeName || '-'}</td>
-                              <td className="px-3 py-2">{row.registrationNumber || '-'}</td>
+                            <tr key={i}>
+                              <td className="px-3 py-1.5">{row.name}</td>
+                              <td className="px-3 py-1.5">{row.email}</td>
+                              <td className="px-3 py-1.5">{row.collegeName || '-'}</td>
+                              <td className="px-3 py-1.5">{row.registrationNumber || '-'}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -393,55 +398,58 @@ export default function ParticipantsPage() {
                   variant="ghost"
                   size="sm"
                   onClick={downloadSampleCSV}
-                  className="text-blue-600"
+                  className="text-primary text-xs gap-1.5 p-0 h-auto"
                 >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download sample CSV
+                  <Download className="h-3.5 w-3.5" />
+                  Download sample CSV template
                 </Button>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setShowCSVDialog(false)}>
+                <Button variant="outline" size="sm" onClick={() => setShowCSVDialog(false)}>
                   Cancel
                 </Button>
                 <Button
+                  size="sm"
                   onClick={processCSVUpload}
                   disabled={!csvFile || !newParticipant.eventId || uploading}
+                  className="text-xs gap-1.5"
                 >
                   {uploading ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <Upload className="h-4 w-4 mr-2" />
+                    <Upload className="h-3.5 w-3.5" />
                   )}
-                  Import
+                  Import Candidates
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
 
+          {/* Add Single Participant Dialog */}
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
+              <Button size="sm" className="h-8 text-xs gap-1.5">
+                <Plus className="h-3.5 w-3.5" />
                 Add Participant
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Add New Participant</DialogTitle>
-                <DialogDescription>
-                  Enter the participant details below. College and Registration Number are optional.
+                <DialogTitle className="text-base font-semibold">Add New Participant</DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  Enter participant information below.
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="event">Event *</Label>
+              <div className="space-y-3 py-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="event" className="text-xs">Event *</Label>
                   <Select
                     value={newParticipant.eventId}
                     onValueChange={(value) =>
                       setNewParticipant({ ...newParticipant, eventId: value })
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 text-xs">
                       <SelectValue placeholder="Select an event" />
                     </SelectTrigger>
                     <SelectContent>
@@ -453,19 +461,20 @@ export default function ParticipantsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name *</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="name" className="text-xs">Full Name *</Label>
                   <Input
                     id="name"
                     value={newParticipant.name}
                     onChange={(e) =>
                       setNewParticipant({ ...newParticipant, name: e.target.value })
                     }
-                    placeholder="Full name"
+                    placeholder="e.g., Alex Morgan"
+                    className="h-9 text-xs"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-xs">Email *</Label>
                   <Input
                     id="email"
                     type="email"
@@ -473,46 +482,45 @@ export default function ParticipantsPage() {
                     onChange={(e) =>
                       setNewParticipant({ ...newParticipant, email: e.target.value })
                     }
-                    placeholder="email@example.com"
+                    placeholder="alex@domain.com"
+                    className="h-9 text-xs"
                   />
                 </div>
                 <Separator />
-                <div className="space-y-2">
-                  <Label htmlFor="collegeName" className="flex items-center gap-2">
-                    <Building2 className="h-3.5 w-3.5" />
-                    College / Institution
-                  </Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="collegeName" className="text-xs">College / Institution</Label>
                   <Input
                     id="collegeName"
                     value={newParticipant.collegeName}
                     onChange={(e) =>
                       setNewParticipant({ ...newParticipant, collegeName: e.target.value })
                     }
-                    placeholder="e.g., University of Technology"
+                    placeholder="e.g., State University"
+                    className="h-9 text-xs"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="registrationNumber" className="flex items-center gap-2">
-                    <Hash className="h-3.5 w-3.5" />
-                    Registration Number
-                  </Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="registrationNumber" className="text-xs">Registration Number</Label>
                   <Input
                     id="registrationNumber"
                     value={newParticipant.registrationNumber}
                     onChange={(e) =>
                       setNewParticipant({ ...newParticipant, registrationNumber: e.target.value })
                     }
-                    placeholder="e.g., REG-2025-001"
+                    placeholder="e.g., REG-2026-001"
+                    className="h-9 text-xs"
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+                <Button variant="outline" size="sm" onClick={() => setShowAddDialog(false)}>
                   Cancel
                 </Button>
                 <Button
+                  size="sm"
                   onClick={handleAddParticipant}
                   disabled={!newParticipant.name || !newParticipant.email || !newParticipant.eventId}
+                  className="text-xs"
                 >
                   Add Participant
                 </Button>
@@ -523,181 +531,128 @@ export default function ParticipantsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-card p-4 rounded-lg border border-border shadow-sm">
+        <div className="sm:col-span-8 relative">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by name, email, college, or reg. no..."
+            placeholder="Search by participant name, email, or institution..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="pl-9 h-9 text-sm"
           />
         </div>
-        <Select value={selectedEvent} onValueChange={setSelectedEvent}>
-          <SelectTrigger className="w-full sm:w-64">
-            <SelectValue placeholder="Filter by event" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Events</SelectItem>
-            {events.map((event) => (
-              <SelectItem key={event._id} value={event._id}>
-                {event.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="sm:col-span-4">
+          <Select value={selectedEvent} onValueChange={setSelectedEvent}>
+            <SelectTrigger className="w-full h-9 text-sm">
+              <SelectValue placeholder="Filter by event" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Events</SelectItem>
+              {events.map((event) => (
+                <SelectItem key={event._id} value={event._id}>
+                  {event.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Participants Table */}
-      <Card>
+      <Card className="border-border shadow-sm overflow-hidden">
         <CardContent className="p-0">
           {filteredParticipants.length > 0 ? (
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                      Participant
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 hidden lg:table-cell">
-                      College / Reg. No.
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                      Event
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                      Certificate
-                    </th>
-                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-500">
-                      Actions
-                    </th>
+                    <th className="px-5 py-3">Participant</th>
+                    <th className="px-5 py-3 hidden md:table-cell">Institution / Reg. No.</th>
+                    <th className="px-5 py-3">Event</th>
+                    <th className="px-5 py-3 text-center">Certificate Status</th>
+                    <th className="px-5 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y">
+                <tbody className="divide-y divide-border text-sm">
                   {filteredParticipants.map((participant) => (
-                    <tr key={participant._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="bg-primary/10 p-2 rounded-full flex-shrink-0">
-                            <Users className="h-4 w-4 text-primary" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-medium text-gray-900 truncate">
-                              {participant.name}
-                            </p>
-                            <p className="text-sm text-gray-500 flex items-center gap-1">
-                              <Mail className="h-3 w-3 flex-shrink-0" />
-                              <span className="truncate">{participant.email}</span>
-                            </p>
-                          </div>
-                        </div>
+                    <tr key={participant._id} className="hover:bg-muted/40 transition-colors">
+                      <td className="px-5 py-3.5">
+                        <p className="font-medium text-foreground text-sm">{participant.name}</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <Mail className="h-3 w-3" />
+                          <span>{participant.email}</span>
+                        </p>
                       </td>
-                      <td className="px-6 py-4 hidden lg:table-cell">
-                        <div className="text-sm">
+                      <td className="px-5 py-3.5 hidden md:table-cell">
+                        <div className="text-xs">
                           {participant.collegeName ? (
                             <>
-                              <div className="flex items-center gap-1.5 text-gray-700">
-                                <Building2 className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
-                                <span className="truncate">{participant.collegeName}</span>
-                              </div>
+                              <p className="text-foreground font-medium">{participant.collegeName}</p>
                               {participant.registrationNumber && (
-                                <div className="flex items-center gap-1.5 text-gray-500 mt-0.5">
-                                  <Hash className="h-3 w-3 flex-shrink-0" />
-                                  <span className="font-mono text-xs">{participant.registrationNumber}</span>
-                                </div>
+                                <p className="text-muted-foreground mt-0.5">{participant.registrationNumber}</p>
                               )}
                             </>
                           ) : (
-                            <span className="text-gray-400 text-xs">Not provided</span>
+                            <span className="text-muted-foreground">-</span>
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <p className="text-sm font-medium text-gray-900">
-                          {participant.eventId.name}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {participant.eventId.organizationCode}
-                        </p>
+                      <td className="px-5 py-3.5">
+                        <p className="text-xs font-medium text-foreground">{participant.eventId?.name || 'Unknown'}</p>
+                        <p className="text-[11px] text-muted-foreground">{participant.eventId?.organizationCode}</p>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-5 py-3.5 text-center">
                         {participant.certificateIssued ? (
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                              <span className="text-xs text-green-600 font-medium">
-                                Issued
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-gray-400 font-mono truncate max-w-[160px]">
-                              {participant.certificateId}
-                            </p>
-                          </div>
+                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-normal inline-flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3 text-emerald-600" />
+                            Issued
+                          </Badge>
                         ) : (
-                          <span className="text-xs text-gray-400">Not issued</span>
+                          <Badge variant="outline" className="bg-muted text-muted-foreground border-border text-xs font-normal">
+                            Not Issued
+                          </Badge>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                      <td className="px-5 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
                           {!participant.certificateIssued ? (
                             <Button
-                              variant="default"
                               size="sm"
                               onClick={() => openIssueDialog(participant)}
-                              disabled={issuingId === participant._id || (!participant.eventId.participationTemplate && !participant.eventId.achievementTemplate)}
-                              title={!participant.eventId.participationTemplate && !participant.eventId.achievementTemplate ? 'No templates designed yet' : 'Issue Certificate'}
+                              className="h-8 text-xs gap-1"
                             >
-                              {issuingId === participant._id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <>
-                                  <Award className="h-4 w-4 mr-1" />
-                                  Issue
-                                </>
-                              )}
+                              <Award className="h-3.5 w-3.5" />
+                              Issue
                             </Button>
                           ) : (
-                            <Link
-                              href={`/verify/${participant.certificateId}`}
-                              target="_blank"
-                            >
-                              <Button variant="outline" size="sm">
-                                <Eye className="h-4 w-4 mr-1" />
-                                View
+                            <Link href={`/verify/${participant.certificateId}`} target="_blank">
+                              <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
+                                <Eye className="h-3.5 w-3.5" />
+                                Verify
                               </Button>
                             </Link>
                           )}
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="text-red-600 h-8 w-8">
-                                <Trash2 className="h-4 w-4" />
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50">
+                                <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Participant</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete <strong>{participant.name}</strong>? This action
-                                  cannot be undone.
-                                  {participant.certificateIssued && (
-                                    <span className="block mt-2 text-red-600 font-medium">
-                                      ⚠ This will also delete the associated certificate.
-                                    </span>
-                                  )}
+                                <AlertDialogTitle className="text-base font-semibold">Delete Participant?</AlertDialogTitle>
+                                <AlertDialogDescription className="text-xs text-muted-foreground">
+                                  Are you sure you want to delete {participant.name}?
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => deleteParticipant(participant._id)}
-                                  className="bg-red-600 hover:bg-red-700"
+                                  className="bg-red-600 hover:bg-red-700 text-white h-8 text-xs"
                                   disabled={deletingId === participant._id}
                                 >
-                                  {deletingId === participant._id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                  ) : (
-                                    'Delete'
-                                  )}
+                                  {deletingId === participant._id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Delete'}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -710,21 +665,19 @@ export default function ParticipantsPage() {
               </table>
             </div>
           ) : (
-            <div className="text-center py-12">
-              <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {searchQuery || selectedEvent !== 'all'
-                  ? 'No participants found'
-                  : 'No participants yet'}
+            <div className="text-center py-12 text-muted-foreground">
+              <Users className="h-10 w-10 text-muted-foreground mx-auto mb-2 opacity-40" />
+              <h3 className="text-sm font-medium text-foreground mb-1">
+                {searchQuery || selectedEvent !== 'all' ? 'No matching participants' : 'No participants yet'}
               </h3>
-              <p className="text-gray-500 mb-4">
+              <p className="text-xs max-w-sm mx-auto mb-4">
                 {searchQuery || selectedEvent !== 'all'
-                  ? 'Try adjusting your filters'
-                  : 'Add participants to get started'}
+                  ? 'Try adjusting your filters.'
+                  : 'Import a CSV roster or add participants manually to issue certificates.'}
               </p>
               {!searchQuery && selectedEvent === 'all' && (
-                <Button onClick={() => setShowAddDialog(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
+                <Button size="sm" onClick={() => setShowAddDialog(true)} className="text-xs gap-1.5">
+                  <Plus className="h-3.5 w-3.5" />
                   Add Participant
                 </Button>
               )}
@@ -737,123 +690,49 @@ export default function ParticipantsPage() {
       <Dialog open={issueDialogOpen} onOpenChange={setIssueDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Award className="h-5 w-5 text-primary" />
+            <DialogTitle className="text-base font-semibold flex items-center gap-1.5">
+              <Award className="h-4 w-4 text-primary" />
               Issue Certificate
             </DialogTitle>
-            <DialogDescription>
-              Issue a certificate to <strong>{issueParticipant?.name}</strong>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Issue a certificate for <strong className="text-foreground">{issueParticipant?.name}</strong>
             </DialogDescription>
           </DialogHeader>
 
-          {issueParticipant && !issueParticipant.eventId.participationTemplate && !issueParticipant.eventId.achievementTemplate && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
-              <p className="font-medium">⚠ No certificate templates found</p>
-              <p className="mt-1 text-amber-700">
-                Please design certificate templates for &quot;{issueParticipant.eventId.name}&quot; in the{' '}
-                <Link href="/dashboard/designer" className="underline font-medium">
-                  Certificate Designer
-                </Link>{' '}
-                before issuing certificates. Both Participation and Achievement templates can be created.
-              </p>
+          {issueParticipant && (
+            <div className="space-y-4 py-2">
+              <Tabs value={certificateType} onValueChange={(v) => setCertificateType(v as 'participation' | 'achievement')}>
+                <TabsList className="w-full h-8">
+                  <TabsTrigger value="participation" className="flex-1 text-xs">
+                    <GraduationCap className="h-3.5 w-3.5 mr-1" />
+                    Participation
+                  </TabsTrigger>
+                  <TabsTrigger value="achievement" className="flex-1 text-xs">
+                    <Trophy className="h-3.5 w-3.5 mr-1" />
+                    Achievement
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="achievement" className="mt-3 space-y-2">
+                  <Label className="text-xs">Position / Rank (e.g. 1st Place)</Label>
+                  <Input
+                    value={position}
+                    onChange={(e) => setPosition(e.target.value)}
+                    placeholder="e.g., 1st Prize Winner"
+                    className="h-8 text-xs"
+                  />
+                </TabsContent>
+              </Tabs>
             </div>
           )}
 
-          {issueParticipant?.eventId.participationTemplate && (
-            <Tabs value={certificateType} onValueChange={(v) => setCertificateType(v as 'participation' | 'achievement')}>
-              <TabsList className="w-full">
-                <TabsTrigger value="participation" className="flex-1">
-                  <GraduationCap className="h-4 w-4 mr-1.5" />
-                  Participation
-                </TabsTrigger>
-                <TabsTrigger value="achievement" className="flex-1">
-                  <Trophy className="h-4 w-4 mr-1.5" />
-                  Achievement
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="participation" className="mt-4 space-y-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-                  <p className="font-medium">Participation Certificate</p>
-                  <p className="mt-1 text-blue-700">
-                    This certificate acknowledges that the participant has taken part in the event.
-                  </p>
-                </div>
-                <div className="space-y-2 p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm font-medium text-gray-700">Certificate will include:</p>
-                  <ul className="text-sm text-gray-600 space-y-1">
-                    <li className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> {issueParticipant.name}</li>
-                    <li className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> {issueParticipant.email}</li>
-                    {issueParticipant.collegeName && (
-                      <li className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> {issueParticipant.collegeName}</li>
-                    )}
-                    {issueParticipant.registrationNumber && (
-                      <li className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> {issueParticipant.registrationNumber}</li>
-                    )}
-                  </ul>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="achievement" className="mt-4 space-y-4">
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
-                  <p className="font-medium">Achievement Certificate</p>
-                  <p className="mt-1 text-amber-700">
-                    This certificate recognizes the participant's specific achievement or position in the event.
-                  </p>
-                </div>
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="position">Position / Achievement *</Label>
-                    <Input
-                      id="position"
-                      value={position}
-                      onChange={(e) => setPosition(e.target.value)}
-                      placeholder="e.g., 1st Place, Best Design, Runner Up"
-                    />
-                    <p className="text-xs text-gray-500">
-                      This will be displayed on the certificate as the participant's position.
-                    </p>
-                  </div>
-                  <div className="space-y-2 p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm font-medium text-gray-700">Certificate will include:</p>
-                    <ul className="text-sm text-gray-600 space-y-1">
-                      <li className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> {issueParticipant.name}</li>
-                      <li className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> {issueParticipant.email}</li>
-                      {issueParticipant.collegeName && (
-                        <li className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> {issueParticipant.collegeName}</li>
-                      )}
-                      {issueParticipant.registrationNumber && (
-                        <li className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> {issueParticipant.registrationNumber}</li>
-                      )}
-                      {position && (
-                        <li className="flex items-center gap-2"><Trophy className="h-3.5 w-3.5 text-amber-500" /> <strong>{position}</strong></li>
-                      )}
-                    </ul>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
-          )}
-
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIssueDialogOpen(false)}>
+            <Button variant="outline" size="sm" onClick={() => setIssueDialogOpen(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={issueCertificate}
-              disabled={issuing || (certificateType === 'achievement' && !issueParticipant?.eventId.achievementTemplate) || (certificateType === 'participation' && !issueParticipant?.eventId.participationTemplate) || (certificateType === 'achievement' && !position.trim())}
-            >
-              {issuing ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Issuing...
-                </>
-              ) : (
-                <>
-                  <Award className="h-4 w-4 mr-2" />
-                  Issue {certificateType === 'achievement' ? 'Achievement' : 'Participation'} Certificate
-                </>
-              )}
+            <Button size="sm" onClick={issueCertificate} disabled={issuing} className="text-xs gap-1.5">
+              {issuing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Award className="h-3.5 w-3.5" />}
+              Issue Now
             </Button>
           </DialogFooter>
         </DialogContent>

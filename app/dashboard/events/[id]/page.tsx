@@ -21,7 +21,6 @@ import {
   Users,
   Award,
   PenTool,
-  Trash2,
   Eye,
 } from 'lucide-react'
 
@@ -125,7 +124,6 @@ export default function EventDetailPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     
-    // Auto-format slug to uppercase and remove non-alphanumeric characters
     if (name === 'customSlug') {
       const formatted = value.toUpperCase().replace(/[^A-Z0-9]/g, '')
       setFormData({
@@ -142,30 +140,29 @@ export default function EventDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="flex flex-col items-center justify-center h-80 gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Loading event details...</p>
       </div>
     )
   }
 
   if (!event) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
+      <div className="space-y-6 p-4 sm:p-6 max-w-7xl mx-auto">
+        <div className="flex items-center gap-3">
           <Link href="/dashboard/events">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Event Not Found</h1>
-          </div>
+          <h1 className="text-xl font-semibold text-foreground">Event Not Found</h1>
         </div>
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-gray-500 mb-4">The event you're looking for doesn't exist.</p>
+        <Card className="border-border">
+          <CardContent className="py-12 text-center text-muted-foreground">
+            <p className="text-sm mb-4">The event you are looking for does not exist.</p>
             <Link href="/dashboard/events">
-              <Button>Back to Events</Button>
+              <Button size="sm" className="text-xs">Back to Events</Button>
             </Link>
           </CardContent>
         </Card>
@@ -174,36 +171,36 @@ export default function EventDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-card p-5 rounded-lg border border-border shadow-sm">
+        <div className="flex items-center gap-3">
           <Link href="/dashboard/events">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+              <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold text-gray-900">{event.name}</h1>
-              <Badge variant="secondary" className="font-mono">
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-semibold text-foreground">{event.name}</h1>
+              <Badge variant="secondary" className="text-xs font-normal">
                 {event.code}
               </Badge>
             </div>
-            <p className="text-gray-500 mt-1">Manage event details and certificate template</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Manage event parameters and design certificate templates.</p>
           </div>
         </div>
         <div className="flex gap-2">
           <Link href={`/dashboard/designer?event=${event._id}`}>
-            <Button variant="outline">
-              <PenTool className="h-4 w-4 mr-2" />
+            <Button size="sm" className="text-xs gap-1.5">
+              <PenTool className="h-3.5 w-3.5" />
               Design Certificate
             </Button>
           </Link>
           <Link href={`/dashboard/participants?event=${event._id}`}>
-            <Button variant="outline">
-              <Users className="h-4 w-4 mr-2" />
-              View Participants
+            <Button variant="outline" size="sm" className="text-xs gap-1.5">
+              <Users className="h-3.5 w-3.5" />
+              Participants
             </Button>
           </Link>
         </div>
@@ -211,69 +208,69 @@ export default function EventDetailPage() {
 
       {/* Success/Error Alerts */}
       {success && (
-        <Alert className="border-green-200 bg-green-50">
-          <AlertDescription className="text-green-800">{success}</AlertDescription>
+        <Alert className="border-emerald-200 bg-emerald-50 text-emerald-800">
+          <AlertDescription className="text-xs">{success}</AlertDescription>
         </Alert>
       )}
       {error && (
         <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription className="text-xs">{error}</AlertDescription>
         </Alert>
       )}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <Card>
+        <Card className="border-border shadow-sm">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="bg-blue-100 p-2 rounded-lg">
-              <Calendar className="h-5 w-5 text-blue-600" />
+            <div className="bg-primary/10 p-2 rounded-lg text-primary">
+              <Calendar className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Event Date</p>
-              <p className="font-medium">
+              <p className="text-xs text-muted-foreground">Event Date</p>
+              <p className="text-sm font-medium text-foreground">
                 {new Date(event.date).toLocaleDateString('en-US', {
                   year: 'numeric',
-                  month: 'long',
+                  month: 'short',
                   day: 'numeric',
                 })}
               </p>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-border shadow-sm">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="bg-green-100 p-2 rounded-lg">
-              <Users className="h-5 w-5 text-green-600" />
+            <div className="bg-emerald-50 text-emerald-600 p-2 rounded-lg">
+              <Users className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Certificates Issued</p>
-              <p className="font-medium">{event.certificateCount}</p>
+              <p className="text-xs text-muted-foreground">Certificates Issued</p>
+              <p className="text-sm font-medium text-foreground">{event.certificateCount}</p>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-border shadow-sm">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="bg-purple-100 p-2 rounded-lg">
-              <Award className="h-5 w-5 text-purple-600" />
+            <div className="bg-purple-50 text-purple-600 p-2 rounded-lg">
+              <Award className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Template Status</p>
-              <p className="font-medium">
+              <p className="text-xs text-muted-foreground">Template Status</p>
+              <p className="text-sm font-medium text-foreground">
                 {event.templateConfig && event.templateConfig.elements?.length > 0
-                  ? 'Designed'
-                  : 'Not Designed'}
+                  ? 'Configured'
+                  : 'Pending Design'}
               </p>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-border shadow-sm">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="bg-orange-100 p-2 rounded-lg">
-              <FileText className="h-5 w-5 text-orange-600" />
+            <div className="bg-amber-50 text-amber-600 p-2 rounded-lg">
+              <FileText className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Event Slug</p>
-              <p className="font-mono font-medium">{event.slug}</p>
+              <p className="text-xs text-muted-foreground">Event Slug</p>
+              <p className="text-sm font-medium text-foreground">{event.slug}</p>
             </div>
           </CardContent>
         </Card>
@@ -281,56 +278,48 @@ export default function EventDetailPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="details">Event Details</TabsTrigger>
-          <TabsTrigger value="certificate">Certificate Template</TabsTrigger>
+        <TabsList className="h-8">
+          <TabsTrigger value="details" className="text-xs">Event Details</TabsTrigger>
+          <TabsTrigger value="certificate" className="text-xs">Certificate Template</TabsTrigger>
         </TabsList>
 
         {/* Event Details Tab */}
-        <TabsContent value="details">
-          <Card>
-            <CardHeader>
-              <CardTitle>Event Details</CardTitle>
-              <CardDescription>Edit the event information below</CardDescription>
+        <TabsContent value="details" className="mt-4">
+          <Card className="border-border shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold text-foreground">Event Details</CardTitle>
+              <CardDescription className="text-xs text-muted-foreground">Edit event settings and identifiers</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="name">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="name" className="text-xs">
                     Event Name <span className="text-red-500">*</span>
                   </Label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="name"
-                      name="name"
-                      placeholder="e.g., Annual Tech Conference 2025"
-                      value={formData.name}
-                      onChange={handleChange}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
+                  <Input
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    className="h-9 text-sm"
+                    required
+                  />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <div className="relative">
-                    <FileText className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="description"
-                      name="description"
-                      placeholder="Brief description of the event"
-                      value={formData.description}
-                      onChange={handleChange}
-                      className="pl-10"
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="description" className="text-xs">Description</Label>
+                  <Input
+                    id="description"
+                    name="description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    className="h-9 text-sm"
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="date">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="date" className="text-xs">
                       Event Date <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -339,91 +328,54 @@ export default function EventDetailPage() {
                       type="date"
                       value={formData.date}
                       onChange={handleChange}
+                      className="h-9 text-sm"
                       required
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Location</Label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Input
-                        id="location"
-                        name="location"
-                        placeholder="e.g., New York, NY"
-                        value={formData.location}
-                        onChange={handleChange}
-                        className="pl-10"
-                      />
-                    </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="location" className="text-xs">Location</Label>
+                    <Input
+                      id="location"
+                      name="location"
+                      value={formData.location}
+                      onChange={handleChange}
+                      className="h-9 text-sm"
+                    />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="organizationCode">
+                <div className="space-y-1.5">
+                  <Label htmlFor="organizationCode" className="text-xs">
                     Organization Code <span className="text-red-500">*</span>
                   </Label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="organizationCode"
-                      name="organizationCode"
-                      placeholder="e.g., ACME (3-5 characters)"
-                      value={formData.organizationCode}
-                      onChange={handleChange}
-                      className="pl-10"
-                      maxLength={5}
-                      required
-                    />
-                  </div>
-                  <p className="text-sm text-gray-500">
-                    This code will be used in certificate IDs (e.g., ACME-EVENT-2025-000001-A1B2)
-                  </p>
+                  <Input
+                    id="organizationCode"
+                    name="organizationCode"
+                    value={formData.organizationCode}
+                    onChange={handleChange}
+                    className="h-9 text-sm"
+                    maxLength={5}
+                    required
+                  />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="customSlug">
-                    Custom Slug <span className="text-xs text-gray-500 font-normal">(optional)</span>
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="customSlug"
-                      name="customSlug"
-                      placeholder="e.g., TECH25 (2-6 characters)"
-                      value={formData.customSlug}
-                      onChange={handleChange}
-                      className="uppercase"
-                      maxLength={6}
-                    />
-                  </div>
-                  <p className="text-sm text-gray-500">
-                    Custom identifier for this event (2-6 alphanumeric characters). Leave empty to keep current slug.
-                  </p>
-                  {formData.customSlug && formData.customSlug.length > 0 && formData.customSlug.length < 2 && (
-                    <p className="text-sm text-amber-600">
-                      ⚠️ Slug must be at least 2 characters
-                    </p>
-                  )}
-                  {formData.customSlug && formData.customSlug.length >= 2 && formData.customSlug.length <= 6 && (
-                    <p className="text-sm text-green-600">
-                      ✓ Valid slug
-                    </p>
-                  )}
+                <div className="space-y-1.5">
+                  <Label htmlFor="customSlug" className="text-xs">Custom Slug</Label>
+                  <Input
+                    id="customSlug"
+                    name="customSlug"
+                    value={formData.customSlug}
+                    onChange={handleChange}
+                    className="h-9 text-sm uppercase"
+                    maxLength={6}
+                  />
                 </div>
 
-                <div className="flex gap-4 pt-4">
-                  <Button type="submit" className="flex-1" disabled={saving}>
-                    {saving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="mr-2 h-4 w-4" />
-                        Save Changes
-                      </>
-                    )}
+                <div className="pt-2">
+                  <Button type="submit" size="sm" className="text-xs gap-1.5" disabled={saving}>
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                    Save Changes
                   </Button>
                 </div>
               </form>
@@ -432,100 +384,29 @@ export default function EventDetailPage() {
         </TabsContent>
 
         {/* Certificate Template Tab */}
-        <TabsContent value="certificate">
-          <Card>
-            <CardHeader>
-              <CardTitle>Certificate Template</CardTitle>
-              <CardDescription>
-                Design your certificate template using the certificate designer
+        <TabsContent value="certificate" className="mt-4">
+          <Card className="border-border shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold text-foreground">Certificate Design</CardTitle>
+              <CardDescription className="text-xs text-muted-foreground">
+                Customize canvas dimensions and elements in the visual designer.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              {event.templateConfig && event.templateConfig.elements?.length > 0 ? (
-                <div className="space-y-4">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <div className="flex items-center gap-3">
-                      <Award className="h-5 w-5 text-green-600" />
-                      <div>
-                        <p className="font-medium text-green-800">Template Configured</p>
-                        <p className="text-sm text-green-600">
-                          Certificate template has {event.templateConfig.elements.length} elements configured
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-sm text-gray-500">Canvas Size</p>
-                      <p className="font-medium">
-                        {event.templateConfig.width} x {event.templateConfig.height}px
-                      </p>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-sm text-gray-500">Background</p>
-                      <p className="font-medium">
-                        {event.templateConfig.backgroundImage ? 'Custom Image' : 'None'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 mb-2">Template Elements</p>
-                    <div className="space-y-2">
-                      {event.templateConfig.elements.map((el: any) => (
-                        <div
-                          key={el.id}
-                          className="flex items-center justify-between bg-gray-50 rounded-lg p-3"
-                        >
-                          <div className="flex items-center gap-3">
-                            <Badge variant="outline" className="capitalize">
-                              {el.type}
-                            </Badge>
-                            <span className="font-medium">
-                              {el.field === 'custom' ? el.content : el.field}
-                            </span>
-                          </div>
-                          <span className="text-sm text-gray-500">
-                            ({el.x}, {el.y})
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Link href={`/dashboard/designer?event=${event._id}`} className="flex-1">
-                      <Button className="w-full">
-                        <PenTool className="h-4 w-4 mr-2" />
-                        Edit Template
-                      </Button>
-                    </Link>
-                    <Link href={`/dashboard/participants?event=${event._id}`} className="flex-1">
-                      <Button variant="outline" className="w-full">
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Certificates
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Award className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    No Certificate Template Yet
-                  </h3>
-                  <p className="text-gray-500 mb-6">
-                    Design a beautiful certificate template for this event using our drag-and-drop designer
-                  </p>
-                  <Link href={`/dashboard/designer?event=${event._id}`}>
-                    <Button size="lg">
-                      <PenTool className="h-4 w-4 mr-2" />
-                      Open Certificate Designer
-                    </Button>
-                  </Link>
-                </div>
-              )}
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Link href={`/dashboard/designer?event=${event._id}`}>
+                  <Button size="sm" className="text-xs gap-1.5">
+                    <PenTool className="h-3.5 w-3.5" />
+                    Open Certificate Designer
+                  </Button>
+                </Link>
+                <Link href={`/dashboard/participants?event=${event._id}`}>
+                  <Button variant="outline" size="sm" className="text-xs gap-1.5">
+                    <Eye className="h-3.5 w-3.5" />
+                    View Participants
+                  </Button>
+                </Link>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

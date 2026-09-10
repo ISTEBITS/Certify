@@ -157,6 +157,9 @@ export async function PUT(
   }
 }
 
+// PATCH /api/events/[id] - Partial update an event (alias to PUT handler)
+export const PATCH = PUT
+
 // DELETE /api/events/[id] - Delete an event
 export async function DELETE(
   request: NextRequest,

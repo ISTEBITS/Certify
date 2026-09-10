@@ -34,6 +34,8 @@ export interface Participant {
   certificateId?: string
   certificateIssued: boolean
   certificateIssuedAt?: Date
+  emailSent?: boolean
+  emailSentAt?: Date
   createdAt: Date
   updatedAt: Date
 }
@@ -41,12 +43,14 @@ export interface Participant {
 export interface Certificate {
   _id: string
   certificateId: string
-  participantId: string
-  eventId: string
+  participantId: any
+  eventId: any
   certificateType: 'participation' | 'achievement'
   position?: string
   templateConfig: TemplateConfig
   issuedAt: Date
+  emailSent?: boolean
+  emailSentAt?: Date
   createdAt: Date
   updatedAt: Date
 }
