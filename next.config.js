@@ -1,13 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
+    qualities: [80],
     remotePatterns: [
       {
-        protocol: 'http',
-        hostname: 'localhost',
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
       },
     ],
-    unoptimized: true,
   },
   env: {
     MONGODB_URI: process.env.MONGODB_URI,

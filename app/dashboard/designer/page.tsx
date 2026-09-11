@@ -14,7 +14,7 @@ import { DesignerHeader } from '@/components/designer/DesignerHeader'
 import { DesignerPropertyBar } from '@/components/designer/DesignerPropertyBar'
 import { DesignerSidebar, SidebarTab } from '@/components/designer/DesignerSidebar'
 import { DesignerMobileBar } from '@/components/designer/DesignerMobileBar'
-import { AssetLibrary, Asset } from '@/components/AssetLibrary'
+import { shiftElementLayer, reorderElementLayers } from '@/components/designer/utils'
 import { useToast } from '@/components/ui/use-toast'
 import { Toaster } from '@/components/ui/toaster'
 import {
@@ -84,7 +84,6 @@ export default function CertificateDesignerPage() {
   // Dialogs
   const [copyDialogOpen, setCopyDialogOpen] = useState(false)
   const [copySourceEventId, setCopySourceEventId] = useState('')
-  const [assetLibraryOpen, setAssetLibraryOpen] = useState(false)
 
   // Undo / Redo History
   const [history, setHistory] = useState<TemplateConfig[]>([DEFAULT_TEMPLATE])
@@ -414,21 +413,7 @@ export default function CertificateDesignerPage() {
   const moveLayer = useCallback(
     (id: string, direction: 'front' | 'back' | 'up' | 'down') => {
       setTemplate((prev) => {
-        const idx = prev.elements.findIndex((el) => el.id === id)
-        if (idx === -1) return prev
-        const elements = [...prev.elements]
-        const [target] = elements.splice(idx, 1)
-
-        if (direction === 'front') {
-          elements.push(target)
-        } else if (direction === 'back') {
-          elements.unshift(target)
-        } else if (direction === 'up') {
-          elements.splice(Math.min(elements.length, idx + 1), 0, target)
-        } else if (direction === 'down') {
-          elements.splice(Math.max(0, idx - 1), 0, target)
-        }
-
+        const elements = shiftElementLayer(prev.elements, id, direction)
         const newTemplate = { ...prev, elements }
         pushHistory(newTemplate)
         return newTemplate
@@ -440,12 +425,7 @@ export default function CertificateDesignerPage() {
   const reorderElements = useCallback(
     (draggedId: string, targetId: string) => {
       setTemplate((prev) => {
-        const fromIdx = prev.elements.findIndex((e) => e.id === draggedId)
-        const toIdx = prev.elements.findIndex((e) => e.id === targetId)
-        if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return prev
-        const elements = [...prev.elements]
-        const [target] = elements.splice(fromIdx, 1)
-        elements.splice(toIdx, 0, target)
+        const elements = reorderElementLayers(prev.elements, draggedId, targetId)
         const newTemplate = { ...prev, elements }
         pushHistory(newTemplate)
         return newTemplate
@@ -505,18 +485,6 @@ export default function CertificateDesignerPage() {
     } finally {
       setUploadingBackground(false)
     }
-  }
-
-  const handleAssetSelect = (asset: Asset) => {
-    if (activeTab === 'templates') {
-      updateTemplate({
-        backgroundImage: asset.url,
-        backgroundImagePublicId: asset.publicId,
-      })
-    } else {
-      addImage(asset.url, asset.publicId)
-    }
-    setAssetLibraryOpen(false)
   }
 
   // ─── Save Template Handler ──────────────────────────────────────────────────
@@ -662,7 +630,10 @@ export default function CertificateDesignerPage() {
         }
         onOpenPreview={downloadPreview}
         onOpenCopyDialog={() => setCopyDialogOpen(true)}
-        onOpenAssetLibrary={() => setAssetLibraryOpen(true)}
+        onOpenAssetLibrary={() => {
+          setActiveTab('uploads')
+          setSidebarOpen(true)
+        }}
         onSave={handleSave}
         saving={saving}
       />
@@ -720,7 +691,6 @@ export default function CertificateDesignerPage() {
           onDeleteElement={deleteElement}
           onMoveLayer={moveLayer}
           onReorderElements={reorderElements}
-          onOpenAssetLibrary={() => setAssetLibraryOpen(true)}
           onUploadBackground={handleUploadBackground}
           uploadingBackground={uploadingBackground}
         />
@@ -760,7 +730,10 @@ export default function CertificateDesignerPage() {
         onAddText={addText}
         onAddQRCode={addQRCode}
         onAddImage={addImage}
-        onOpenAssetLibrary={() => setAssetLibraryOpen(true)}
+        onOpenAssetLibrary={() => {
+          setActiveTab('uploads')
+          setSidebarOpen(true)
+        }}
         onOpenSidebar={() => {
           setActiveTab('elements')
           setSidebarOpen(true)
@@ -841,13 +814,6 @@ export default function CertificateDesignerPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Asset Library Dialog */}
-      <AssetLibrary
-        open={assetLibraryOpen}
-        onOpenChange={setAssetLibraryOpen}
-        onAssetSelect={handleAssetSelect}
-      />
 
       <Toaster />
     </div>

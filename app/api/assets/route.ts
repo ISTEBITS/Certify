@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { v2 as cloudinary } from 'cloudinary'
+import { inferAssetType } from '@/lib/utils'
 
 // Configure Cloudinary
 cloudinary.config({
@@ -40,17 +41,7 @@ export async function GET(request: NextRequest) {
     const assets = result.resources.map((resource: any) => {
       const publicId = resource.public_id
       const tags = resource.tags || []
-      const lowerPublicId = publicId.toLowerCase()
-
-      let type = 'other'
-      if (lowerPublicId.includes('logo')) type = 'logo'
-      else if (lowerPublicId.includes('signature') || lowerPublicId.includes('sign')) type = 'signature'
-      else if (lowerPublicId.includes('background') || lowerPublicId.includes('bg')) type = 'background'
-
-      // Check tags for type
-      if (tags.includes('logo')) type = 'logo'
-      else if (tags.includes('signature')) type = 'signature'
-      else if (tags.includes('background')) type = 'background'
+      const type = inferAssetType(publicId, tags)
 
       return {
         _id: resource.public_id,

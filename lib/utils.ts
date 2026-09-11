@@ -110,3 +110,43 @@ export function generateEventCode(): string {
   }
   return code
 }
+
+/**
+ * Converts a browser File object to a base64 encoded data URL string.
+ */
+export function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+/**
+ * Infers the asset type category from filename or Cloudinary tags.
+ */
+export function inferAssetType(
+  filename: string,
+  tags: string[] = []
+): 'background' | 'logo' | 'signature' | 'other' {
+  const lower = filename.toLowerCase()
+  const lowerTags = tags.map((t) => t.toLowerCase())
+
+  if (lower.includes('logo') || lowerTags.includes('logo')) return 'logo'
+  if (
+    lower.includes('signature') ||
+    lower.includes('sign') ||
+    lowerTags.includes('signature')
+  ) {
+    return 'signature'
+  }
+  if (
+    lower.includes('background') ||
+    lower.includes('bg') ||
+    lowerTags.includes('background')
+  ) {
+    return 'background'
+  }
+  return 'other'
+}

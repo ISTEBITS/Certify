@@ -26,7 +26,8 @@ import {
   RotateCw,
   RotateCcw,
 } from 'lucide-react'
-import { TemplateElement, TemplateConfig } from './types'
+import { TemplateElement, TemplateConfig, AlignmentType } from './types'
+import { calculateAlignmentPosition, calculateAspectRatioResize } from './utils'
 
 interface PositionPanelProps {
   selectedElement: TemplateElement | null
@@ -57,60 +58,25 @@ export function PositionPanel({
   const [dragOverId, setDragOverId] = useState<string | null>(null)
 
   // Align to Page Handler
-  const alignToPage = (type: 'top' | 'left' | 'middle' | 'center' | 'bottom' | 'right') => {
+  const alignToPage = (type: AlignmentType) => {
     if (!selectedElement) return
-    const elW = selectedElement.width || 100
-    const elH = selectedElement.height || 40
-
-    switch (type) {
-      case 'top':
-        onUpdateElement(selectedElement.id, { y: 20 })
-        break
-      case 'left':
-        onUpdateElement(selectedElement.id, { x: 20 })
-        break
-      case 'middle':
-        onUpdateElement(selectedElement.id, { y: Math.round((template.height - elH) / 2) })
-        break
-      case 'center':
-        onUpdateElement(selectedElement.id, { x: Math.round((template.width - elW) / 2) })
-        break
-      case 'bottom':
-        onUpdateElement(selectedElement.id, { y: Math.round(template.height - elH - 20) })
-        break
-      case 'right':
-        onUpdateElement(selectedElement.id, { x: Math.round(template.width - elW - 20) })
-        break
+    const updates = calculateAlignmentPosition(selectedElement, template.width, template.height, type)
+    if (Object.keys(updates).length > 0) {
+      onUpdateElement(selectedElement.id, updates)
     }
   }
 
   // Handle Aspect Ratio aware resizing
   const handleWidthChange = (newWidth: number) => {
     if (!selectedElement) return
-    const clampedW = Math.max(10, newWidth)
-    if (selectedElement.aspectRatioLocked && selectedElement.width > 0) {
-      const ratio = (selectedElement.height || 10) / selectedElement.width
-      onUpdateElement(selectedElement.id, {
-        width: clampedW,
-        height: Math.round(clampedW * ratio),
-      })
-    } else {
-      onUpdateElement(selectedElement.id, { width: clampedW })
-    }
+    const updates = calculateAspectRatioResize(selectedElement, newWidth, 'width')
+    onUpdateElement(selectedElement.id, updates)
   }
 
   const handleHeightChange = (newHeight: number) => {
     if (!selectedElement) return
-    const clampedH = Math.max(10, newHeight)
-    if (selectedElement.aspectRatioLocked && selectedElement.height > 0) {
-      const ratio = (selectedElement.width || 10) / selectedElement.height
-      onUpdateElement(selectedElement.id, {
-        height: clampedH,
-        width: Math.round(clampedH * ratio),
-      })
-    } else {
-      onUpdateElement(selectedElement.id, { height: clampedH })
-    }
+    const updates = calculateAspectRatioResize(selectedElement, newHeight, 'height')
+    onUpdateElement(selectedElement.id, updates)
   }
 
   return (
