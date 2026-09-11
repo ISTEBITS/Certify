@@ -101,6 +101,17 @@ const CertificateSchema = new Schema<ICertificate>(
         isUnderline: Boolean,
         src: String, // for image elements (logos, signatures)
         imagePublicId: String, // Cloudinary public ID
+        richTextSegments: [{
+          text: String,
+          isBold: Boolean,
+          isItalic: Boolean,
+          isUnderline: Boolean,
+          fontSize: Number,
+          color: String,
+          fontFamily: String,
+          field: String,
+          textTransform: String,
+        }],
       }],
     },
     issuedAt: {

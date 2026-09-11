@@ -1,31 +1,16 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useRef } from 'react'
 import {
   X,
   Upload,
   Image as ImageIcon,
-  Search,
   Loader2,
-  Plus,
-  Trash2,
-  LayoutTemplate,
-  Sparkles,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { useToast } from '@/components/ui/use-toast'
-
-export interface AssetItem {
-  _id: string
-  url: string
-  publicId: string
-  name: string
-  type: 'background' | 'logo' | 'signature' | 'other'
-  width?: number
-  height?: number
-  uploadedAt: string
-}
+import Image from 'next/image'
+import { ASSET_CATEGORIES } from './types'
+import { useAssetManager } from './useAssetManager'
 
 interface MobileAssetSheetProps {
   onAddImage: (src: string, publicId?: string) => void
@@ -33,130 +18,29 @@ interface MobileAssetSheetProps {
   onClose: () => void
 }
 
-const CATEGORIES: Array<{ id: string; label: string }> = [
-  { id: 'all', label: 'All' },
-  { id: 'logo', label: 'Logos' },
-  { id: 'signature', label: 'Signatures' },
-  { id: 'background', label: 'Backgrounds' },
-  { id: 'other', label: 'Other' },
-]
-
 export function MobileAssetSheet({
   onAddImage,
-  onSetAsBackground,
   onClose,
 }: MobileAssetSheetProps) {
-  const [assets, setAssets] = useState<AssetItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [uploading, setUploading] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [activeCategory, setActiveCategory] = useState('all')
+  const {
+    loading,
+    uploading,
+    activeCategory,
+    setActiveCategory,
+    filteredAssets,
+    uploadFiles,
+  } = useAssetManager()
+
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { toast } = useToast()
-
-  useEffect(() => {
-    fetchAssets()
-  }, [])
-
-  const fetchAssets = async () => {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/assets')
-      const data = await res.json()
-      if (Array.isArray(data)) {
-        setAssets(data)
-      }
-    } catch (err) {
-      console.error('Failed to fetch assets:', err)
-      toast({
-        title: 'Error',
-        description: 'Failed to load assets',
-        variant: 'destructive',
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = reject
-      reader.readAsDataURL(file)
-    })
-  }
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || files.length === 0) return
-
-    setUploading(true)
-    const fileList = Array.from(files)
-    let successCount = 0
-
-    try {
-      for (const file of fileList) {
-        const base64 = await fileToBase64(file)
-        const response = await fetch('/api/upload-image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            base64Data: base64,
-            folder: 'asset',
-            name: file.name,
-          }),
-        })
-
-        const result = await response.json()
-        if (!response.ok) {
-          throw new Error(result.error || `Failed to upload ${file.name}`)
-        }
-
-        const lowerName = file.name.toLowerCase()
-        let type: AssetItem['type'] = 'other'
-        if (lowerName.includes('logo')) type = 'logo'
-        else if (lowerName.includes('signature') || lowerName.includes('sign')) type = 'signature'
-        else if (lowerName.includes('background') || lowerName.includes('bg')) type = 'background'
-
-        const newAsset: AssetItem = {
-          _id: result.publicId || `temp-${Date.now()}`,
-          url: result.url,
-          publicId: result.publicId,
-          name: result.name || file.name,
-          type,
-          width: result.width,
-          height: result.height,
-          uploadedAt: new Date().toISOString(),
-        }
-
-        setAssets((prev) => [newAsset, ...prev])
-        successCount++
-      }
-
-      toast({
-        title: 'Upload Complete',
-        description: `Successfully uploaded ${successCount} asset(s)`,
-      })
-    } catch (err: any) {
-      toast({
-        title: 'Upload Failed',
-        description: err.message || 'Error uploading asset',
-        variant: 'destructive',
-      })
-    } finally {
-      setUploading(false)
+    if (e.target.files && e.target.files.length > 0) {
+      await uploadFiles(e.target.files)
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
     }
   }
-
-  const filteredAssets = assets.filter((asset) => {
-    const matchesSearch = asset.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCategory = activeCategory === 'all' || asset.type === activeCategory
-    return matchesSearch && matchesCategory
-  })
 
   return (
     <div className="w-full bg-card text-card-foreground rounded-t-3xl border-t border-border shadow-2xl flex flex-col font-sans select-none pb-[max(0.75rem,env(safe-area-inset-bottom))] transition-[height] duration-200 ease-out max-h-[82vh]">
@@ -180,9 +64,8 @@ export function MobileAssetSheet({
         </button>
       </div>
 
-      {/* Upload and Search Bar */}
+      {/* Upload and Category Bar */}
       <div className="p-3.5 pb-2 space-y-2.5 shrink-0">
-        {/* Hidden File Input & Upload Trigger Button */}
         <input
           ref={fileInputRef}
           type="file"
@@ -190,6 +73,7 @@ export function MobileAssetSheet({
           multiple
           className="hidden"
           onChange={handleUpload}
+          disabled={uploading}
         />
         <Button
           type="button"
@@ -210,9 +94,9 @@ export function MobileAssetSheet({
           )}
         </Button>
 
-        {/* Category Pills Switcher */}
+        {/* Category Pills */}
         <div className="flex gap-1.5 overflow-x-auto no-scrollbar pt-0.5">
-          {CATEGORIES.map((cat) => (
+          {ASSET_CATEGORIES.map((cat) => (
             <button
               key={cat.id}
               type="button"
@@ -247,13 +131,15 @@ export function MobileAssetSheet({
                   onClose()
                 }}
               >
-                <img
+                <Image
                   src={asset.url}
                   alt={asset.name}
                   className="w-full h-full object-contain rounded-xl"
+                  width={100}
+                  height={100}
+                  quality={80}
                   loading="lazy"
                 />
-                {/* Title badge overlay on hover/touch */}
                 <div className="absolute inset-x-0 bottom-0 bg-background/90 backdrop-blur-xs p-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-between">
                   <span className="text-[9px] font-medium text-foreground truncate block flex-1">
                     {asset.name}

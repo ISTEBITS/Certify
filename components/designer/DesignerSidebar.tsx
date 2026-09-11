@@ -35,6 +35,7 @@ import {
 } from './types'
 import { PositionPanel } from './PositionPanel'
 import { ColorPalettePanel } from './ColorPalettePanel'
+import { UploadsPanel } from './UploadsPanel'
 
 export type SidebarTab =
   | 'templates'
@@ -63,7 +64,7 @@ interface DesignerSidebarProps {
   onDeleteElement: (id: string) => void
   onMoveLayer: (id: string, direction: 'front' | 'back' | 'up' | 'down') => void
   onReorderElements?: (draggedId: string, targetId: string) => void
-  onOpenAssetLibrary: () => void
+  onOpenAssetLibrary?: () => void
   onUploadBackground: (e: React.ChangeEvent<HTMLInputElement>) => void
   uploadingBackground: boolean
 }
@@ -79,12 +80,12 @@ export function DesignerSidebar({
   setSelectedId,
   onAddText,
   onAddQRCode,
+  onAddImage,
   onUpdateTemplate,
   onUpdateElement,
   onDeleteElement,
   onMoveLayer,
   onReorderElements,
-  onOpenAssetLibrary,
   onUploadBackground,
   uploadingBackground,
 }: DesignerSidebarProps) {
@@ -244,6 +245,22 @@ export function DesignerSidebar({
                 className="rounded-none border-0 shadow-none h-full"
               />
             </div>
+          ) : activeTab === 'uploads' ? (
+            /* 3. UPLOADS & ASSETS PANEL IN LEFT DRAWER */
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <UploadsPanel
+                onAddImage={onAddImage}
+                onSetAsBackground={(src, publicId) =>
+                  onUpdateTemplate({
+                    backgroundImage: src,
+                    backgroundImagePublicId: publicId,
+                  })
+                }
+                template={template}
+                onClose={() => setSidebarOpen(false)}
+                className="rounded-none border-0 shadow-none h-full"
+              />
+            </div>
           ) : (
             /* 3. OTHER STANDARD SIDEBAR TABS */
             <>
@@ -253,7 +270,6 @@ export function DesignerSidebar({
                   {activeTab === 'templates' && <LayoutTemplate className="h-3.5 w-3.5 text-primary" />}
                   {activeTab === 'elements' && <Sparkles className="h-3.5 w-3.5 text-primary" />}
                   {activeTab === 'text' && <Type className="h-3.5 w-3.5 text-primary" />}
-                  {activeTab === 'uploads' && <Upload className="h-3.5 w-3.5 text-primary" />}
                   {activeTab === 'layers' && <Layers className="h-3.5 w-3.5 text-primary" />}
                   {activeTab === 'templates' ? 'Canvas & Background' : activeTab}
                 </span>
@@ -282,7 +298,7 @@ export function DesignerSidebar({
                           className="text-xs h-9 justify-start"
                           onClick={() => onUpdateTemplate({ width: 842, height: 595 })}
                         >
-                          A4 Landscape (842x595)
+                          A4 Landscape
                         </Button>
                         <Button
                           variant={template.width === 595 && template.height === 842 ? 'secondary' : 'outline'}
@@ -290,7 +306,7 @@ export function DesignerSidebar({
                           className="text-xs h-9 justify-start"
                           onClick={() => onUpdateTemplate({ width: 595, height: 842 })}
                         >
-                          A4 Portrait (595x842)
+                          A4 Portrait
                         </Button>
                       </div>
                     </div>
@@ -318,7 +334,7 @@ export function DesignerSidebar({
                           variant="outline"
                           size="sm"
                           className="w-full text-xs gap-1.5 h-8"
-                          onClick={onOpenAssetLibrary}
+                          onClick={() => setActiveTab('uploads')}
                         >
                           <ImageIcon className="h-3.5 w-3.5" />
                           Choose from Asset Library
@@ -350,8 +366,6 @@ export function DesignerSidebar({
                 {activeTab === 'elements' && (
                   <div className="space-y-4">
                     <div>
-                      <Label className="text-xs font-semibold">Essential Certificate Elements</Label>
-                      <p className="text-[11px] text-muted-foreground mb-2">Add verification components.</p>
                       <div className="space-y-2">
                         <Button
                           variant="outline"
@@ -362,26 +376,9 @@ export function DesignerSidebar({
                           <QrCode className="h-4 w-4 text-primary" />
                           <div className="flex flex-col items-start text-left">
                             <span className="font-medium">Verification QR Code</span>
-                            <span className="text-[10px] text-muted-foreground">Dynamic verification scan code</span>
                           </div>
                         </Button>
                       </div>
-                    </div>
-
-                    <Separator />
-
-                    <div>
-                      <Label className="text-xs font-semibold">Graphics & Media</Label>
-                      <p className="text-[11px] text-muted-foreground mb-2">Add signatures, badges, and logos.</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start gap-2 h-9 text-xs"
-                        onClick={onOpenAssetLibrary}
-                      >
-                        <ImageIcon className="h-4 w-4 text-primary" />
-                        <span>Browse Assets & Badges</span>
-                      </Button>
                     </div>
                   </div>
                 )}
@@ -390,10 +387,6 @@ export function DesignerSidebar({
                 {activeTab === 'text' && (
                   <div className="space-y-4">
                     <div>
-                      <Label className="text-xs font-semibold">Dynamic Participant Fields</Label>
-                      <p className="text-[11px] text-muted-foreground mb-2">
-                        Auto-replaced with participant details during certificate generation.
-                      </p>
                       <div className="space-y-1.5">
                         <Button
                           variant="outline"
@@ -473,8 +466,6 @@ export function DesignerSidebar({
                     <Separator />
 
                     <div>
-                      <Label className="text-xs font-semibold">Custom Text</Label>
-                      <p className="text-[11px] text-muted-foreground mb-2">Static titles, descriptions, and labels.</p>
                       <div className="space-y-1.5">
                         <Button
                           variant="secondary"
@@ -508,26 +499,6 @@ export function DesignerSidebar({
                   </div>
                 )}
 
-                {/* 4. UPLOADS & ASSET LIBRARY TAB */}
-                {activeTab === 'uploads' && (
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="text-xs font-semibold">Asset Library</Label>
-                      <p className="text-[11px] text-muted-foreground mb-2">
-                        Browse uploaded logos, stamps, signatures, and badges.
-                      </p>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="w-full text-xs gap-1.5 h-9"
-                        onClick={onOpenAssetLibrary}
-                      >
-                        <ImageIcon className="h-4 w-4" />
-                        Open Media Asset Library
-                      </Button>
-                    </div>
-                  </div>
-                )}
 
                 {/* 5. LAYERS ORDER & SELECTION TAB */}
                 {activeTab === 'layers' && (

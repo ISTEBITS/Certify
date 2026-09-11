@@ -111,3 +111,24 @@ export const PRESET_COLORS = [
   '#1d4ed8',
   '#6d28d9',
 ]
+
+export type AlignmentType = 'top' | 'left' | 'middle' | 'center' | 'bottom' | 'right'
+
+export interface AssetItem {
+  _id: string
+  url: string
+  publicId: string
+  name: string
+  type: 'background' | 'logo' | 'signature' | 'other'
+  width?: number
+  height?: number
+  uploadedAt: string
+}
+
+export const ASSET_CATEGORIES: Array<{ id: string; label: string }> = [
+  { id: 'all', label: 'All' },
+  { id: 'logo', label: 'Logos' },
+  { id: 'signature', label: 'Signatures' },
+  { id: 'background', label: 'Backgrounds' },
+  { id: 'other', label: 'Other' },
+]
