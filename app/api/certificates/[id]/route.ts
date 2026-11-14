@@ -26,7 +26,7 @@ export async function GET(
     await connectDB()
 
     const certificate = await Certificate.findById(id)
-      .populate('participantId', 'name email collegeName registrationNumber')
+      .populate('participantId', 'name collegeName registrationNumber')
       .populate('eventId', 'name organizationCode date slug')
       .select('-__v')
       .lean()
