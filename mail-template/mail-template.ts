@@ -48,7 +48,7 @@ export function getCertificateDeliveryText({
   fromName = 'ISTE BIT Sindri',
   position,
 }: CertificateEmailParams): string {
-  const verificationLink = verifyUrl || `https://certify.app/verify/${certificateId}`
+  const verificationLink = verifyUrl || `https://certificates.istebits.com/verify/${certificateId}`
 
   return `Dear ${participantName},
 

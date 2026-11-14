@@ -31,7 +31,7 @@ export async function GET(
 
     // Find certificate
     const certificate: any = await Certificate.findOne({ certificateId: id })
-      .populate('participantId', 'name email')
+      .populate('participantId', 'name collegeName registrationNumber')
       .populate('eventId', 'name date organizationName organizationCode location')
       .lean()
 

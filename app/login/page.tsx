@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Mail, Lock, Award } from 'lucide-react'
+import { Logo } from '@/components/Logo'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -48,12 +49,10 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
           <div className="flex items-center gap-3">
-            <div className="bg-primary p-3 rounded-xl">
-              <Award className="h-8 w-8 text-white" />
-            </div>
+            <Logo />
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Certify</h1>
-              <p className="text-sm text-gray-500">Certificate Management</p>
+              <h1 className="text-2xl font-bold text-gray-900">ISTE Students' Chapter</h1>
+              <p className="text-sm text-gray-500">BIT Sindri</p>
             </div>
           </div>
         </div>
@@ -62,7 +61,7 @@ export default function LoginPage() {
           <CardHeader>
             <CardTitle>Admin Login</CardTitle>
             <CardDescription>
-              Sign in to access your certificate management dashboard
+              Sign in to access certificate management dashboard
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
@@ -72,7 +71,7 @@ export default function LoginPage() {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-              
+
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
@@ -106,8 +105,8 @@ export default function LoginPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full"
                 disabled={loading}
               >
