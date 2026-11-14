@@ -16,21 +16,21 @@ import {
   Loader2,
   Shield,
   FileText,
-  Mail,
   GraduationCap,
   Trophy,
   Calendar,
+  Bug,
 } from 'lucide-react'
 import QRCode from 'qrcode'
 import { pdf } from '@react-pdf/renderer'
 import { CertificatePDF } from '@/components/CertificateTemplate'
+import { Navbar } from '@/components/Navbar'
 
 interface CertificateData {
   valid: boolean
   certificate?: {
     certificateId: string
     participantName: string
-    participantEmail: string
     eventName: string
     eventDate: string
     organizationName: string
@@ -103,7 +103,6 @@ interface FullCertificate {
   position?: string
   participantId: {
     name: string
-    email: string
     collegeName?: string
     registrationNumber?: string
   }
@@ -259,195 +258,192 @@ export default function VerifyPage() {
   const cert = data.certificate!
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
-      <div className="max-w-5xl mx-auto space-y-8">
-        {/* Verification Success */}
-        <Card className="border-green-200">
-          <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row items-center gap-6">
-              <div className="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center flex-shrink-0">
-                <CheckCircle className="h-10 w-10 text-green-600" />
+    <div className="">
+      <Navbar />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
+        <div className="max-w-5xl mx-auto space-y-8">
+          {/* Verification Success */}
+          <Card className="border-green-200">
+            <CardContent className="pt-6">
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                <div className="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center flex-shrink-0">
+                  <CheckCircle className="h-10 w-10 text-green-600" />
+                </div>
+                <div className="text-center md:text-left flex-1">
+                  <CardTitle className="text-2xl mb-2 text-green-800">
+                    Certificate Verified
+                  </CardTitle>
+                  <CardDescription className="text-green-700">
+                    This certificate has been successfully verified and is authentic.
+                  </CardDescription>
+                  {cert.certificateType && (
+                    <div className="mt-2">
+                      <Badge
+                        variant={cert.certificateType === 'achievement' ? 'default' : 'secondary'}
+                        className="text-sm"
+                      >
+                        {cert.certificateType === 'achievement' ? (
+                          <>
+                            <Trophy className="h-3.5 w-3.5 mr-1.5" />
+                            Achievement Certificate
+                          </>
+                        ) : (
+                          <>
+                            <GraduationCap className="h-3.5 w-3.5 mr-1.5" />
+                            Participation Certificate
+                          </>
+                        )}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={downloadPDF}
+                    disabled={downloading || !fullCertificate}
+                  >
+                    {downloading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    Download PDF
+                  </Button>
+                </div>
               </div>
-              <div className="text-center md:text-left flex-1">
-                <CardTitle className="text-2xl mb-2 text-green-800">
-                  Certificate Verified
+            </CardContent>
+          </Card>
+
+          {/* Certificate Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Recipient Info */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Recipient
                 </CardTitle>
-                <CardDescription className="text-green-700">
-                  This certificate has been successfully verified and is authentic.
-                </CardDescription>
-                {cert.certificateType && (
-                  <div className="mt-2">
-                    <Badge
-                      variant={cert.certificateType === 'achievement' ? 'default' : 'secondary'}
-                      className="text-sm"
-                    >
-                      {cert.certificateType === 'achievement' ? (
-                        <>
-                          <Trophy className="h-3.5 w-3.5 mr-1.5" />
-                          Achievement Certificate
-                        </>
-                      ) : (
-                        <>
-                          <GraduationCap className="h-3.5 w-3.5 mr-1.5" />
-                          Participation Certificate
-                        </>
-                      )}
-                    </Badge>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Name</p>
+                  <p className="text-base font-semibold">{cert.participantName}</p>
+                </div>
+                {cert.collegeName && (
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
+                      <Building2 className="h-3 w-3" /> College
+                    </p>
+                    <p className="text-sm text-gray-700">{cert.collegeName}</p>
                   </div>
                 )}
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={downloadPDF}
-                  disabled={downloading || !fullCertificate}
-                >
-                  {downloading ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Download className="h-4 w-4 mr-2" />
-                  )}
-                  Download PDF
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                {cert.registrationNumber && (
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Registration No.</p>
+                    <p className="text-sm text-gray-700">{cert.registrationNumber}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-        {/* Certificate Details */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Recipient Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Recipient
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Name</p>
-                <p className="text-base font-semibold">{cert.participantName}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
-                  <Mail className="h-3 w-3" /> Email
-                </p>
-                <p className="text-sm text-gray-700">{cert.participantEmail}</p>
-              </div>
-              {cert.collegeName && (
+            {/* Event Info */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Award className="h-5 w-5" />
+                  Event Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Event Name</p>
+                  <p className="text-base font-semibold">{cert.eventName}</p>
+                </div>
                 <div>
                   <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
-                    <Building2 className="h-3 w-3" /> College
+                    <Calendar className="h-3 w-3" /> Event Date
                   </p>
-                  <p className="text-sm text-gray-700">{cert.collegeName}</p>
-                </div>
-              )}
-              {cert.registrationNumber && (
-                <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Registration No.</p>
-                  <p className="text-sm text-gray-700">{cert.registrationNumber}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Event Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Award className="h-5 w-5" />
-                Event Details
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Event Name</p>
-                <p className="text-base font-semibold">{cert.eventName}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
-                  <Calendar className="h-3 w-3" /> Event Date
-                </p>
-                <p className="text-sm text-gray-700">
-                  {new Date(cert.eventDate).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </p>
-              </div>
-              {cert.certificateType === 'achievement' && cert.position && (
-                <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
-                    <Trophy className="h-3 w-3" /> Position
+                  <p className="text-sm text-gray-700">
+                    {new Date(cert.eventDate).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
                   </p>
-                  <p className="text-base font-semibold text-amber-600">{cert.position}</p>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                {cert.certificateType === 'achievement' && cert.position && (
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
+                      <Trophy className="h-3 w-3" /> Position
+                    </p>
+                    <p className="text-base font-semibold text-amber-600">{cert.position}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-          {/* Certificate Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Certificate Info
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Certificate ID</p>
-                <p className="text-sm break-all">{cert.certificateId}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Organization</p>
-                <p className="text-sm font-semibold">{cert.organizationName || cert.organizationCode}</p>
-              </div>
-              {cert.location && (
+            {/* Certificate Info */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Certificate Info
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Location</p>
-                  <p className="text-sm text-gray-700">{cert.location}</p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Certificate ID</p>
+                  <p className="text-sm break-all">{cert.certificateId}</p>
                 </div>
-              )}
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Issued</p>
-                <p className="text-sm text-gray-700">
-                  {new Date(cert.issuedAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Organization</p>
+                  <p className="text-sm font-semibold">{cert.organizationName || cert.organizationCode}</p>
+                </div>
+                {cert.location && (
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Location</p>
+                    <p className="text-sm text-gray-700">{cert.location}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Issued</p>
+                  <p className="text-sm text-gray-700">
+                    {new Date(cert.issuedAt).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-        {/* Certificate Preview */}
-        {fullCertificate && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Certificate Preview
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-2 sm:p-6">
-              <ResponsiveCertificatePreview fullCertificate={fullCertificate} />
-            </CardContent>
-          </Card>
-        )}
+          {/* Certificate Preview */}
+          {fullCertificate && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Certificate Preview
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-2 sm:p-6">
+                <ResponsiveCertificatePreview fullCertificate={fullCertificate} />
+              </CardContent>
+            </Card>
+          )}
 
-        {/* Footer */}
-        <div className="text-center text-gray-500 text-sm">
-          <p>Verified by Certify - Certificate Management System</p>
-          <p className="mt-1 text-xs">
-            Verification URL: {typeof window !== 'undefined' && window.location.href}
-          </p>
+          {/* Footer */}
+          <div className="text-center text-gray-500 text-sm flex items-center justify-center gap-3">
+            <Link className="flex items-center justify-center gap-3 font-bold text-red-500" href={'https://istebits.com/contact'}>
+              <Bug size={18}/>
+              Report Any Use
+            </Link>
+          </div>
         </div>
       </div>
     </div>
@@ -523,7 +519,6 @@ function ResponsiveCertificatePreview({ fullCertificate }: { fullCertificate: an
               collegeName={fullCertificate.participantId?.collegeName}
               registrationNumber={fullCertificate.participantId?.registrationNumber}
               position={fullCertificate.position}
-              participantEmail={fullCertificate.participantId?.email}
             />
           ))}
         </div>
@@ -542,7 +537,6 @@ function CertificateElement({
   collegeName,
   registrationNumber,
   position,
-  participantEmail,
 }: {
   element: any
   certificateId: string
@@ -552,7 +546,6 @@ function CertificateElement({
   collegeName?: string
   registrationNumber?: string
   position?: string
-  participantEmail?: string
 }) {
   const qrRef = useRef<HTMLCanvasElement>(null)
 
@@ -578,7 +571,6 @@ function CertificateElement({
     if (element.field === 'collegeName') return collegeName || ''
     if (element.field === 'registrationNumber') return registrationNumber || ''
     if (element.field === 'position') return position || ''
-    if (element.field === 'email') return participantEmail || ''
     return element.content || ''
   }
 
@@ -650,7 +642,6 @@ function CertificateElement({
             else if (segment.field === 'collegeName') segText = collegeName || ''
             else if (segment.field === 'registrationNumber') segText = registrationNumber || ''
             else if (segment.field === 'position') segText = position || ''
-            else if (segment.field === 'email') segText = participantEmail || ''
 
             if (segment.textTransform === 'uppercase') segText = segText.toUpperCase()
             else if (segment.textTransform === 'lowercase') segText = segText.toLowerCase()
