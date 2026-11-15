@@ -33,6 +33,8 @@ export function getCertificateDeliveryEmail({
     You can also verify and view your certificate online : <br />
     <a href="${verificationLink}" style="color: #0000ee;">${verificationLink}</a>
   </p>
+  <p>If you find any issues with your certificate, please contact : </p> 
+  <b>Anup Mandal (2024) : +91 81024 45393</b>
   <p>
     Best regards,<br />
     <b>Team ${escapeHtml(fromName)}</b>
