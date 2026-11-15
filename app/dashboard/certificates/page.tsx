@@ -370,23 +370,62 @@ export default function CertificatesPage() {
         }),
       })
 
-      const data = await response.json()
-      
-      if (data.logs) {
-        setConsoleLogs(data.logs)
-      }
-      if (data.results) {
-        setEmailResults(data.results)
-      }
-      if (data.summary) {
-        setEmailSummary(data.summary)
+      if (!response.ok && !response.body) {
+        throw new Error(`Server returned HTTP ${response.status}`)
       }
 
-      if (response.ok) {
-        setSelectedCertificates(new Set())
-        setSelectMode(false)
-        fetchCertificates()
+      if (response.body) {
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
+
+          for (const line of lines) {
+            const trimmed = line.trim()
+            if (!trimmed) continue
+            try {
+              const data = JSON.parse(trimmed)
+              if (data.type === 'log' && data.log) {
+                setConsoleLogs((prev) => [...prev, data.log])
+              } else if (data.type === 'result' && data.result) {
+                setEmailResults((prev) => {
+                  const existingIndex = prev.findIndex(
+                    (r) => r.certificateId === data.result.certificateId
+                  )
+                  if (existingIndex >= 0) {
+                    const copy = [...prev]
+                    copy[existingIndex] = data.result
+                    return copy
+                  }
+                  return [...prev, data.result]
+                })
+              } else if (data.type === 'summary' && data.summary) {
+                setEmailSummary(data.summary)
+              } else if (data.type === 'done') {
+                if (data.summary) {
+                  setEmailSummary(data.summary)
+                }
+                if (data.results) {
+                  setEmailResults(data.results)
+                }
+              }
+            } catch {
+              // fallback or non-ndjson line
+            }
+          }
+        }
       }
+
+      setSelectedCertificates(new Set())
+      setSelectMode(false)
+      fetchCertificates()
     } catch (error: any) {
       console.error('Error sending bulk emails:', error)
       setConsoleLogs((prev) => [

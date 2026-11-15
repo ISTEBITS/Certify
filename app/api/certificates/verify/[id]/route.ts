@@ -27,9 +27,12 @@ export async function GET(
 
     await connectDB()
 
-    const certificate = await Certificate.findOne({ certificateId })
+    const certificate: any = await Certificate.findOne({ certificateId })
       .populate('participantId', 'name collegeName registrationNumber')
-      .populate('eventId', 'name organizationCode date slug description location')
+      .populate(
+        'eventId',
+        'name organizationCode date slug description location participationTemplate achievementTemplate'
+      )
       .select('-__v')
       .lean()
 
@@ -40,9 +43,30 @@ export async function GET(
       )
     }
 
+    // Resolve templateConfig with fallback to event templates if missing
+    let resolvedTemplateConfig = certificate.templateConfig
+    if (
+      !resolvedTemplateConfig ||
+      (!resolvedTemplateConfig.elements?.length && !resolvedTemplateConfig.backgroundImage)
+    ) {
+      resolvedTemplateConfig =
+        certificate.certificateType === 'achievement' &&
+        certificate.eventId?.achievementTemplate?.elements?.length
+          ? certificate.eventId.achievementTemplate
+          : certificate.eventId?.participationTemplate ||
+            certificate.eventId?.achievementTemplate || {
+              width: 842,
+              height: 595,
+              elements: [],
+            }
+    }
+
     return NextResponse.json({
       valid: true,
-      certificate,
+      certificate: {
+        ...certificate,
+        templateConfig: resolvedTemplateConfig,
+      },
     })
   } catch (error: any) {
     console.error('Certificate verification error:', error)

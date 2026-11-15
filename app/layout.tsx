@@ -14,12 +14,13 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'Certify - Certificate Management Platform',
+  title: 'Certificate Management System | ISTE BITS',
   description:
-    'Create, manage, and issue beautiful certificates with QR verification. A full-stack certificate management platform.',
-  keywords: 'certificates, management, QR verification, events, participants',
-  authors: [{ name: 'Certify' }],
+    'Certificate Management System | ISTE BITS',
+  keywords: 'ISTE BITS Certificate management system, istebits certificate',
+  authors: [{ name: 'ISTE BITS' }],
 }
+
 
 export default function RootLayout({
   children,

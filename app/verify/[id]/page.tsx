@@ -179,10 +179,14 @@ export default function VerifyPage() {
       setData(result)
 
       if (result.valid) {
-        const certResponse = await fetch(`/api/certificates/verify/${certificateId}`)
-        if (certResponse.ok) {
-          const certData = await certResponse.json()
-          setFullCertificate(certData.certificate)
+        if (result.fullCertificate) {
+          setFullCertificate(result.fullCertificate)
+        } else {
+          const certResponse = await fetch(`/api/certificates/verify/${certificateId}`)
+          if (certResponse.ok) {
+            const certData = await certResponse.json()
+            setFullCertificate(certData.certificate)
+          }
         }
       }
     } catch (error) {
@@ -441,7 +445,7 @@ export default function VerifyPage() {
           <div className="text-center text-gray-500 text-sm flex items-center justify-center gap-3">
             <Link className="flex items-center justify-center gap-3 font-bold text-red-500" href={'https://istebits.com/contact'}>
               <Bug size={18}/>
-              Report Any Use
+              Report Any Issue
             </Link>
           </div>
         </div>
@@ -455,13 +459,23 @@ function ResponsiveCertificatePreview({ fullCertificate }: { fullCertificate: an
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
 
-  const tplWidth = fullCertificate.templateConfig?.width ?? 842
-  const tplHeight = fullCertificate.templateConfig?.height ?? 595
+  const templateConfig =
+    fullCertificate?.templateConfig ||
+    (fullCertificate?.certificateType === 'achievement' &&
+    fullCertificate?.eventId?.achievementTemplate?.elements?.length
+      ? fullCertificate?.eventId?.achievementTemplate
+      : fullCertificate?.eventId?.participationTemplate ||
+        fullCertificate?.eventId?.achievementTemplate || {})
+
+  const tplWidth = templateConfig?.width ?? 842
+  const tplHeight = templateConfig?.height ?? 595
 
   useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
     const updateScale = () => {
-      if (!containerRef.current) return
-      const containerWidth = containerRef.current.clientWidth
+      const containerWidth = el.clientWidth
       if (containerWidth > 0 && containerWidth < tplWidth) {
         setScale(containerWidth / tplWidth)
       } else {
@@ -470,8 +484,17 @@ function ResponsiveCertificatePreview({ fullCertificate }: { fullCertificate: an
     }
 
     updateScale()
+
+    const ro = new ResizeObserver(() => {
+      updateScale()
+    })
+    ro.observe(el)
+
     window.addEventListener('resize', updateScale)
-    return () => window.removeEventListener('resize', updateScale)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', updateScale)
+    }
   }, [tplWidth])
 
   return (
@@ -485,22 +508,23 @@ function ResponsiveCertificatePreview({ fullCertificate }: { fullCertificate: an
         className="transition-all duration-150 flex-shrink-0"
       >
         <div
-          className="bg-white shadow-lg origin-top-left"
+          className="bg-white shadow-lg"
           style={{
             width: tplWidth,
             height: tplHeight,
             transform: `scale(${scale})`,
+            transformOrigin: 'top left',
             position: 'relative',
             overflow: 'hidden',
           }}
         >
           {/* Background */}
-          {fullCertificate.templateConfig?.backgroundImage && (
+          {templateConfig?.backgroundImage && (
             <div
               style={{
                 position: 'absolute',
                 inset: 0,
-                backgroundImage: `url(${fullCertificate.templateConfig.backgroundImage})`,
+                backgroundImage: `url(${templateConfig.backgroundImage})`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
               }}
@@ -508,19 +532,32 @@ function ResponsiveCertificatePreview({ fullCertificate }: { fullCertificate: an
           )}
 
           {/* Elements */}
-          {fullCertificate.templateConfig?.elements?.map((element: any) => (
-            <CertificateElement
-              key={element.id}
-              element={element}
-              certificateId={fullCertificate.certificateId}
-              participantName={fullCertificate.participantId?.name}
-              eventName={fullCertificate.eventId?.name}
-              eventDate={fullCertificate.eventId?.date}
-              collegeName={fullCertificate.participantId?.collegeName}
-              registrationNumber={fullCertificate.participantId?.registrationNumber}
-              position={fullCertificate.position}
-            />
-          ))}
+          {templateConfig?.elements && templateConfig.elements.length > 0 ? (
+            templateConfig.elements.map((element: any) => (
+              <CertificateElement
+                key={element.id}
+                element={element}
+                certificateId={fullCertificate.certificateId}
+                participantName={fullCertificate.participantId?.name}
+                eventName={fullCertificate.eventId?.name}
+                eventDate={fullCertificate.eventId?.date}
+                collegeName={fullCertificate.participantId?.collegeName}
+                registrationNumber={fullCertificate.participantId?.registrationNumber}
+                position={fullCertificate.position}
+              />
+            ))
+          ) : (
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-white/95">
+              <Award className="h-12 w-12 text-primary/40 mb-3" />
+              <p className="text-base font-semibold text-foreground">
+                Certificate Preview
+              </p>
+              <p className="text-xs text-muted-foreground max-w-sm mt-1">
+                Issued to <span className="font-semibold text-foreground">{fullCertificate.participantId?.name}</span> for{' '}
+                <span className="font-semibold text-foreground">{fullCertificate.eventId?.name}</span>
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -551,9 +588,16 @@ function CertificateElement({
 
   useEffect(() => {
     if (element.type === 'qrcode' && qrRef.current) {
-      QRCode.toCanvas(qrRef.current, `${window.location.origin}/verify/${certificateId}`, {
-        width: element.width || 100,
-      })
+      QRCode.toCanvas(
+        qrRef.current,
+        `${window.location.origin}/verify/${certificateId}`,
+        {
+          width: element.width || 100,
+        },
+        (err) => {
+          if (err) console.warn('QR canvas error:', err)
+        }
+      )
     }
   }, [element, certificateId])
 
@@ -581,7 +625,7 @@ function CertificateElement({
     return (
       <img
         src={imgSrc}
-        crossOrigin="anonymous"
+        alt=""
         style={{
           position: 'absolute',
           left: element.x,

@@ -32,7 +32,10 @@ export async function GET(
     // Find certificate
     const certificate: any = await Certificate.findOne({ certificateId: id })
       .populate('participantId', 'name collegeName registrationNumber')
-      .populate('eventId', 'name date organizationName organizationCode location')
+      .populate(
+        'eventId',
+        'name date organizationName organizationCode location participationTemplate achievementTemplate'
+      )
       .lean()
 
     if (!certificate) {
@@ -42,12 +45,29 @@ export async function GET(
       )
     }
 
+    // Resolve templateConfig with fallback to event templates if missing
+    let resolvedTemplateConfig = certificate.templateConfig
+    if (
+      !resolvedTemplateConfig ||
+      (!resolvedTemplateConfig.elements?.length && !resolvedTemplateConfig.backgroundImage)
+    ) {
+      resolvedTemplateConfig =
+        certificate.certificateType === 'achievement' &&
+        certificate.eventId?.achievementTemplate?.elements?.length
+          ? certificate.eventId.achievementTemplate
+          : certificate.eventId?.participationTemplate ||
+            certificate.eventId?.achievementTemplate || {
+              width: 842,
+              height: 595,
+              elements: [],
+            }
+    }
+
     return NextResponse.json({
       valid: true,
       certificate: {
         certificateId: certificate.certificateId,
         participantName: certificate.participantId?.name,
-        participantEmail: certificate.participantId?.email,
         eventName: certificate.eventId?.name,
         eventDate: certificate.eventId?.date,
         organizationName: certificate.eventId?.organizationName,
@@ -58,6 +78,10 @@ export async function GET(
         position: certificate.position,
         certificateType: certificate.certificateType || 'participation',
         issuedAt: certificate.issuedAt,
+      },
+      fullCertificate: {
+        ...certificate,
+        templateConfig: resolvedTemplateConfig,
       },
     })
   } catch (error: any) {
